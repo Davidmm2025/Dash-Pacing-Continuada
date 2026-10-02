@@ -55,34 +55,34 @@
         };
 
         const PRODUCTS = [
-            "Pós-graduação",
-            "Pós-híbrida",
-            "Técnicos",
-            "Técnicos Híbridos",
-            "Profissionalizantes",
-            "Pós Médica",
-            "Pós Injetáveis"
+            "Pós-Graduação",
+            "Pós-Híbridas",
+            "Pós-Médica",
+            "Pós-Injetáveis",
+            "Técnico",
+            "Técnico-Híbrido",
+            "Profissionalizantes"
         ];
 
         function App() {
             const [activeTab, setActiveTab] = useState("overview");
-            const [selectedProduct, setSelectedProduct] = useState("Pós-graduação");
+            const [selectedProduct, setSelectedProduct] = useState("Pós-Graduação");
             const [selectedTool, setSelectedTool] = useState("Todas");
 
             const [budgets, setBudgets] = useState({
-                "Pós-graduação": 50000,
-                "Pós-híbrida": 35000,
-                "Técnicos": 40000,
-                "Técnicos Híbridos": 25000,
-                "Profissionalizantes": 20000,
-                "Pós Médica": 30000,
-                "Pós Injetáveis": 30000
+                "Pós-Graduação": 50000,
+                "Pós-Híbridas": 35000,
+                "Pós-Médica": 30000,
+                "Pós-Injetáveis": 30000,
+                "Técnico": 40000,
+                "Técnico-Híbrido": 25000,
+                "Profissionalizantes": 20000
             });
 
             const [campaigns, setCampaigns] = useState([
-                { id: 1, name: "Google Search - Institucional", product: "Pós-graduação", tool: "Google Ads", status: "Ativa", dailyData: {} },
-                { id: 2, name: "Meta Ads - Conversão Leads", product: "Pós-graduação", tool: "Meta Ads", status: "Ativa", dailyData: {} },
-                { id: 3, name: "Google PMax - Pós Híbrida", product: "Pós-híbrida", tool: "Google Ads", status: "Ativa", dailyData: {} }
+                { id: 1, name: "Google Search - Institucional", product: "Pós-Graduação", tool: "Google Ads", status: "Ativa", dailyData: {} },
+                { id: 2, name: "Meta Ads - Conversão Leads", product: "Pós-Graduação", tool: "Meta Ads", status: "Ativa", dailyData: {} },
+                { id: 3, name: "Google PMax - Pós Híbrida", product: "Pós-Híbridas", tool: "Google Ads", status: "Ativa", dailyData: {} }
             ]);
 
             const [isAiModalOpen, setIsAiModalOpen] = useState(false);
