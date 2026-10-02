@@ -191,7 +191,16 @@
 
             const formatBRL = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
+            // Meses anteriores a Outubro de 2026 (< "2026-10") começam zerados por padrão
             const currentMonthBudgets = useMemo(() => {
+                if (selectedMonth < "2026-10") {
+                    if (budgetsByMonth[selectedMonth]) {
+                        return budgetsByMonth[selectedMonth];
+                    }
+                    const zeroMap = {};
+                    PRODUCTS.forEach(p => zeroMap[p] = 0);
+                    return zeroMap;
+                }
                 return budgetsByMonth[selectedMonth] || {
                     "Pós-Graduação": 50000,
                     "Pós-Híbridas": 35000,
@@ -308,6 +317,7 @@
             }, [selectedProduct, currentMonthBudgets, pacingRows]);
 
             const getMonthSpentTotal = (monthKey) => {
+                if (monthKey < "2026-10" && !budgetsByMonth[monthKey]) return 0;
                 let total = 0;
                 campaigns.forEach(c => {
                     if (c.dailyData && c.dailyData[monthKey]) {
@@ -320,6 +330,7 @@
             };
 
             const getMonthBudgetTotal = (monthKey) => {
+                if (monthKey < "2026-10" && !budgetsByMonth[monthKey]) return 0;
                 const mBudgets = budgetsByMonth[monthKey] || {};
                 return PRODUCTS.reduce((acc, p) => acc + (Number(mBudgets[p]) || 0), 0);
             };
