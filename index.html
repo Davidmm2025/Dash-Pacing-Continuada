@@ -361,20 +361,24 @@
 
             return (
                 <div className="max-w-7xl mx-auto px-4 py-6">
-                    {/* TOPO: LOGOTIPO UNICESUMAR E SELETOR DE MÊS */}
+                    {/* TOPO: LOGOTIPO OFICIAL UNICESUMAR */}
                     <div className="bg-unicesumar text-white rounded-2xl p-5 shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="flex items-center gap-4">
-                            {/* Logotipo Oficial UniCesumar em formato vetorizado puro */}
                             <div className="bg-white p-2.5 rounded-xl shadow flex items-center justify-center">
                                 <svg className="w-10 h-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M15 25V65C15 77.15 24.85 87 37 87H63C75.15 87 85 77.15 85 65V25" stroke="#0d233a" strokeWidth="12" strokeLinecap="round"/>
-                                    <circle cx="50" cy="50" r="18" fill="#0077cc"/>
-                                    <path d="M30 45C30 35.61 37.61 28 47 28H75" stroke="#4a90e2" strokeWidth="8" strokeLinecap="round"/>
+                                    <!-- U Shape -->
+                                    <path d="M22 25v42c0 15.5 12.5 28 28 28s28-12.5 28-28V25" stroke="#0d233a" strokeWidth="10" strokeLinecap="round"/>
+                                    <!-- Central Sphere -->
+                                    <circle cx="50" cy="50" r="10" fill="#0077cc"/>
+                                    <!-- Inner Arc 1 -->
+                                    <path d="M34 43c0-9 7-16 16-16h16" stroke="#4a90e2" strokeWidth="6" strokeLinecap="round"/>
+                                    <!-- Inner Arc 2 -->
+                                    <path d="M38 58c0-6 5-11 11-11h11" stroke="#0077cc" strokeWidth="5" strokeLinecap="round"/>
                                 </svg>
                             </div>
                             <div>
                                 <h1 className="text-xl font-bold tracking-wide">UniCesumar</h1>
-                                <p className="text-xs text-slate-300">Gestão de Mídia Performance & Pacing</p>
+                                <p className="text-[10px] tracking-widest text-blue-200 uppercase font-medium">EAD, Semipresencial e Presencial</p>
                             </div>
                         </div>
 
