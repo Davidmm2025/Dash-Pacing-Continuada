@@ -50,6 +50,8 @@
                 case 'share': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>;
                 case 'plus': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
                 case 'trash': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
+                case 'git-compare': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>;
+                case 'pie-chart': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
                 default: return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
             }
         };
@@ -61,22 +63,53 @@
             "Pós-Injetáveis",
             "Técnico",
             "Técnico-Híbrido",
+            "THE - Técnico em Enfermagem",
+            "THP - Técnico em Podologia",
+            "THR - Técnico em Radiologia",
+            "THS - Técnico em Segurança do Trabalho",
             "Profissionalizantes"
         ];
 
+        const MONTHS_LIST = [
+            { id: "2026-01", name: "Janeiro 2026" },
+            { id: "2026-02", name: "Fevereiro 2026" },
+            { id: "2026-03", name: "Março 2026" },
+            { id: "2026-04", name: "Abril 2026" },
+            { id: "2026-05", name: "Maio 2026" },
+            { id: "2026-06", name: "Junho 2026" },
+            { id: "2026-07", name: "Julho 2026" },
+            { id: "2026-08", name: "Agosto 2026" },
+            { id: "2026-09", name: "Setembro 2026" },
+            { id: "2026-10", name: "Outubro 2026" },
+            { id: "2026-11", name: "Novembro 2026" },
+            { id: "2026-12", name: "Dezembro 2026" }
+        ];
+
         function App() {
+            const currentMonthDefault = (() => {
+                const now = new Date();
+                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            })();
+
+            const [selectedMonth, setSelectedMonth] = useState(currentMonthDefault);
             const [activeTab, setActiveTab] = useState("overview");
             const [selectedProduct, setSelectedProduct] = useState("Pós-Graduação");
             const [selectedTool, setSelectedTool] = useState("Todas");
 
-            const [budgets, setBudgets] = useState({
-                "Pós-Graduação": 50000,
-                "Pós-Híbridas": 35000,
-                "Pós-Médica": 30000,
-                "Pós-Injetáveis": 30000,
-                "Técnico": 40000,
-                "Técnico-Híbrido": 25000,
-                "Profissionalizantes": 20000
+            const [budgetsByMonth, setBudgetsByMonth] = useState({
+                [currentMonthDefault]: {
+                    "Pós-Graduação": 50000,
+                    "Pós-Híbridas": 35000,
+                    "Pós-Médica": 30000,
+                    "Pós-Injetáveis": 30000,
+                    "Técnico": 40000,
+                    "Técnico-Híbrido": 25000,
+                    "THE - Técnico em Enfermagem": 20000,
+                    "THP - Técnico em Podologia": 15000,
+                    "THR - Técnico em Radiologia": 15000,
+                    "THS - Técnico em Segurança do Trabalho": 15000,
+                    "Profissionalizantes": 20000
+                }
             });
 
             const [campaigns, setCampaigns] = useState([
@@ -91,39 +124,41 @@
             const [syncStatus, setSyncStatus] = useState("A carregar nuvem...");
             const [campaignPacingModal, setCampaignPacingModal] = useState(null);
 
+            const [compareMonthA, setCompareMonthA] = useState(currentMonthDefault);
+            const [compareMonthB, setCompareMonthB] = useState(currentMonthDefault);
+
             const daysInMonth = useMemo(() => {
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = now.getMonth();
-                const totalDays = new Date(year, month + 1, 0).getDate();
+                const [year, month] = selectedMonth.split('-').map(Number);
+                const totalDays = new Date(year, month, 0).getDate();
                 const days = [];
                 const weekdays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+                const now = new Date();
 
                 for (let i = 1; i <= totalDays; i++) {
-                    const d = new Date(year, month, i);
+                    const d = new Date(year, month - 1, i);
                     days.push({
                         dateNum: i,
-                        dateStr: `${String(i).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}`,
+                        dateStr: `${String(i).padStart(2, '0')}/${String(month).padStart(2, '0')}`,
                         weekday: weekdays[d.getDay()],
                         isPast: d < new Date(now.getFullYear(), now.getMonth(), now.getDate()),
                         isToday: d.toDateString() === now.toDateString()
                     });
                 }
                 return days;
-            }, []);
+            }, [selectedMonth]);
 
             useEffect(() => {
                 if (!window.db) return;
-                const docRef = window.db.collection("dash_data").doc("main_state");
+                const docRef = window.db.collection("dash_data").doc("main_state_multi_month");
                 
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
                     if (docSnap.exists) {
                         const data = docSnap.data();
-                        if (data.budgets) setBudgets(prev => ({ ...prev, ...data.budgets }));
+                        if (data.budgetsByMonth) setBudgetsByMonth(prev => ({ ...prev, ...data.budgetsByMonth }));
                         if (data.campaigns) setCampaigns(data.campaigns);
                         setSyncStatus("Sincronizado com a nuvem");
                     } else {
-                        docRef.set({ budgets, campaigns });
+                        docRef.set({ budgetsByMonth, campaigns });
                         setSyncStatus("Sincronizado com a nuvem");
                     }
                 }, (error) => {
@@ -135,13 +170,13 @@
             }, []);
 
             const saveDataToCloud = (newBudgets, newCampaigns) => {
-                setBudgets(newBudgets);
+                setBudgetsByMonth(newBudgets);
                 setCampaigns(newCampaigns);
 
                 if (window.db) {
                     setSyncStatus("A guardar...");
-                    window.db.collection("dash_data").doc("main_state").set({
-                        budgets: newBudgets,
+                    window.db.collection("dash_data").doc("main_state_multi_month").set({
+                        budgetsByMonth: newBudgets,
                         campaigns: newCampaigns
                     }).then(() => {
                         setSyncStatus("Sincronizado com a nuvem");
@@ -153,13 +188,29 @@
 
             const formatBRL = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
+            const currentMonthBudgets = useMemo(() => {
+                return budgetsByMonth[selectedMonth] || {
+                    "Pós-Graduação": 50000,
+                    "Pós-Híbridas": 35000,
+                    "Pós-Médica": 30000,
+                    "Pós-Injetáveis": 30000,
+                    "Técnico": 40000,
+                    "Técnico-Híbrido": 25000,
+                    "THE - Técnico em Enfermagem": 20000,
+                    "THP - Técnico em Podologia": 15000,
+                    "THR - Técnico em Radiologia": 15000,
+                    "THS - Técnico em Segurança do Trabalho": 15000,
+                    "Profissionalizantes": 20000
+                };
+            }, [budgetsByMonth, selectedMonth]);
+
             const totalSpentByProduct = useMemo(() => {
                 const map = {};
                 PRODUCTS.forEach(prod => {
                     let total = 0;
                     campaigns.filter(c => c.product === prod && c.status === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool)).forEach(c => {
-                        if (c.dailyData) {
-                            Object.values(c.dailyData).forEach(d => {
+                        if (c.dailyData && c.dailyData[selectedMonth]) {
+                            Object.values(c.dailyData[selectedMonth]).forEach(d => {
                                 total += Number(d.realized) || 0;
                             });
                         }
@@ -167,10 +218,40 @@
                     map[prod] = total;
                 });
                 return map;
-            }, [campaigns, selectedTool]);
+            }, [campaigns, selectedMonth, selectedTool]);
+
+            // Estatísticas consolidadas globais para o Overview
+            const overviewGlobalStats = useMemo(() => {
+                let totalBudget = 0;
+                let totalSpent = 0;
+                let googleSpent = 0;
+                let metaSpent = 0;
+
+                PRODUCTS.forEach(p => {
+                    totalBudget += Number(currentMonthBudgets[p]) || 0;
+                });
+
+                campaigns.forEach(c => {
+                    if (c.status === "Ativa" && c.dailyData && c.dailyData[selectedMonth]) {
+                        Object.values(c.dailyData[selectedMonth]).forEach(d => {
+                            const val = Number(d.realized) || 0;
+                            totalSpent += val;
+                            if (c.tool === "Google Ads") googleSpent += val;
+                            if (c.tool === "Meta Ads") metaSpent += val;
+                        });
+                    }
+                });
+
+                const totalPct = totalBudget > 0 ? Math.min(Math.round((totalSpent / totalBudget) * 100), 100) : 0;
+                const totalBalance = totalBudget - totalSpent;
+                const googlePct = totalSpent > 0 ? Math.round((googleSpent / totalSpent) * 100) : 0;
+                const metaPct = totalSpent > 0 ? Math.round((metaSpent / totalSpent) * 100) : 0;
+
+                return { totalBudget, totalSpent, totalPct, totalBalance, googleSpent, metaSpent, googlePct, metaPct };
+            }, [currentMonthBudgets, campaigns, selectedMonth]);
 
             const pacingRows = useMemo(() => {
-                const prodBudget = budgets[selectedProduct] || 0;
+                const prodBudget = currentMonthBudgets[selectedProduct] || 0;
                 const totalDays = daysInMonth.length;
                 const defaultDaily = prodBudget / totalDays;
 
@@ -183,10 +264,10 @@
                     campaigns
                         .filter(c => c.product === selectedProduct && c.status === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool))
                         .forEach(c => {
-                            if (c.dailyData && c.dailyData[day.dateStr]) {
+                            if (c.dailyData && c.dailyData[selectedMonth] && c.dailyData[selectedMonth][day.dateStr]) {
                                 hasCampaignData = true;
-                                dayPlanned += Number(c.dailyData[day.dateStr].planned) || 0;
-                                dayRealized += Number(c.dailyData[day.dateStr].realized) || 0;
+                                dayPlanned += Number(c.dailyData[selectedMonth][day.dateStr].planned) || 0;
+                                dayRealized += Number(c.dailyData[selectedMonth][day.dateStr].realized) || 0;
                             }
                         });
 
@@ -203,10 +284,10 @@
 
                     return { ...day, planned, realized, delta, accumulated, balance, status };
                 });
-            }, [selectedProduct, budgets, daysInMonth, campaigns, selectedTool]);
+            }, [selectedProduct, currentMonthBudgets, daysInMonth, campaigns, selectedMonth, selectedTool]);
 
             const currentKPIs = useMemo(() => {
-                const budget = budgets[selectedProduct] || 0;
+                const budget = currentMonthBudgets[selectedProduct] || 0;
                 const totalRealized = pacingRows.reduce((acc, r) => acc + r.realized, 0);
                 const balance = budget - totalRealized;
                 const pastDays = pacingRows.filter(r => r.isPast);
@@ -222,18 +303,36 @@
                     lastDayStatus: lastPast?.status || "Normal",
                     suggestedPacing
                 };
-            }, [selectedProduct, budgets, pacingRows]);
+            }, [selectedProduct, currentMonthBudgets, pacingRows]);
+
+            const getMonthSpentTotal = (monthKey) => {
+                let total = 0;
+                campaigns.forEach(c => {
+                    if (c.dailyData && c.dailyData[monthKey]) {
+                        Object.values(c.dailyData[monthKey]).forEach(d => {
+                            total += Number(d.realized) || 0;
+                        });
+                    }
+                });
+                return total;
+            };
+
+            const getMonthBudgetTotal = (monthKey) => {
+                const mBudgets = budgetsByMonth[monthKey] || {};
+                return PRODUCTS.reduce((acc, p) => acc + (Number(mBudgets[p]) || 0), 0);
+            };
 
             const handleExportCSV = () => {
-                let csv = "Tipo,Produto,Ferramenta,Orçamento/Nome,Valor/Detalhes\n";
-                PRODUCTS.forEach(p => csv += `Orcamento,${p},Geral,-,${budgets[p]}\n`);
-                campaigns.forEach(c => csv += `Campanha,${c.product},${c.tool},"${c.name}",Ativa\n`);
+                let csv = "Tipo,Mes,Produto,Ferramenta,Valor\n";
+                Object.keys(budgetsByMonth).forEach(m => {
+                    PRODUCTS.forEach(p => csv += `Orcamento,${m},${p},Geral,${budgetsByMonth[m][p] || 0}\n`);
+                });
                 
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `backup_midia_${new Date().toISOString().slice(0,10)}.csv`;
+                a.download = `backup_orcamentos_${new Date().toISOString().slice(0,10)}.csv`;
                 a.click();
             };
 
@@ -241,72 +340,97 @@
                 setIsAiModalOpen(true);
                 setAiText("A analisar métricas de performance e pacing com Inteligência Artificial...");
                 setTimeout(() => {
-                    setAiText(`📊 Relatório de IA - ${selectedProduct}:\n\nO orçamento mensal de ${formatBRL(currentKPIs.budget)} está com consumo acumulado de ${formatBRL(currentKPIs.totalRealized)}. O saldo restante é de ${formatBRL(currentKPIs.balance)}.\n\nRecomendação: O pacing sugerido para os próximos dias é de ${formatBRL(currentKPIs.suggestedPacing)}/dia. Mantenha o monitoramento ativo nas campanhas de maior conversão para evitar desvios no orçamento BAU.`);
+                    setAiText(`📊 Relatório de IA (${selectedProduct} - ${selectedMonth}):\n\nO orçamento mensal de ${formatBRL(currentKPIs.budget)} está com consumo acumulado de ${formatBRL(currentKPIs.totalRealized)}. O saldo restante é de ${formatBRL(currentKPIs.balance)}.\n\nRecomendação: O pacing sugerido para os próximos dias é de ${formatBRL(currentKPIs.suggestedPacing)}/dia. Mantenha o monitoramento ativo nas campanhas de maior conversão para evitar desvios no orçamento BAU.`);
                 }, 1000);
             };
 
             return (
                 <div className="max-w-7xl mx-auto px-4 py-6">
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-slate-200 pb-6">
-                        <div>
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold text-slate-900">
-                                    Gestão de Mídia Performance & Pacing
-                                </h1>
-                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 shadow-sm">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    {syncStatus}
-                                </span>
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                            <div className="bg-indigo-50 p-2.5 rounded-xl text-indigo-600">
+                                <Icon name="calendar" className="w-5 h-5" />
                             </div>
-                            <p className="text-slate-500 text-sm mt-1">Controle de BAU, Pacing Diário por Campanha e Campanhas (Google & Meta Ads)</p>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Mês de Referência</label>
+                                <select 
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                    className="bg-transparent font-bold text-slate-900 text-base focus:outline-none cursor-pointer"
+                                >
+                                    {MONTHS_LIST.map(m => (
+                                        <option key={m.id} value={m.id}>{m.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                            <button onClick={handleOpenAI} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition">
+
+                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 shadow-sm">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                {syncStatus}
+                            </span>
+                            <button onClick={handleOpenAI} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow transition">
                                 <Icon name="sparkles" className="w-4 h-4" /> Resumo IA
                             </button>
+                            <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium shadow transition">
+                                <Icon name="share" className="w-4 h-4" /> Partilhar Link
+                            </button>
+                        </div>
+                    </div>
+
+                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-slate-200 pb-6">
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-900">
+                                Gestão de Mídia Performance & Pacing
+                            </h1>
+                            <p className="text-slate-500 text-sm mt-1">Controle de BAU, Pacing Diário por Campanha e Comparativos (Google & Meta Ads)</p>
+                        </div>
+                        <div className="flex gap-2">
                             <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium border border-slate-300 shadow-sm transition">
                                 <Icon name="download" className="w-4 h-4" /> Exportar Backup
-                            </button>
-                            <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition">
-                                <Icon name="share" className="w-4 h-4" /> Partilhar Link
                             </button>
                         </div>
                     </header>
 
-                    {/* Abas de Produtos */}
                     <div className="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
                         <button
                             onClick={() => setActiveTab("overview")}
                             className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "overview" ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                         >
-                            📊 Visão Geral (Consolidado)
+                            📊 Visão Geral (Executiva)
                         </button>
                         {PRODUCTS.map(prod => (
                             <button
                                 key={prod}
                                 onClick={() => { setSelectedProduct(prod); setActiveTab("pacing"); }}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab !== "overview" && selectedProduct === prod ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab !== "overview" && activeTab !== "comparison" && selectedProduct === prod ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                             >
                                 {prod}
                             </button>
                         ))}
+                        <button
+                            onClick={() => setActiveTab("comparison")}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ml-auto flex items-center gap-1.5 ${activeTab === "comparison" ? 'bg-emerald-600 text-white shadow' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'}`}
+                        >
+                            <Icon name="git-compare" className="w-4 h-4" /> Comparativo Meses
+                        </button>
                     </div>
 
-                    {/* Filtro de Ferramentas */}
-                    <div className="flex justify-between items-center mb-6 bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm">
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Canal:</span>
-                            {["Todas", "Google Ads", "Meta Ads"].map(tool => (
-                                <button
-                                    key={tool}
-                                    onClick={() => setSelectedTool(tool)}
-                                    className={`px-3 py-1 rounded-md text-xs font-medium transition ${selectedTool === tool ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                                >
-                                    {tool}
-                                </button>
-                            ))}
-                        </div>
-                        {activeTab !== "overview" && (
+                    {activeTab !== "comparison" && activeTab !== "overview" && (
+                        <div className="flex justify-between items-center mb-6 bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Canal:</span>
+                                {["Todas", "Google Ads", "Meta Ads"].map(tool => (
+                                    <button
+                                        key={tool}
+                                        onClick={() => setSelectedTool(tool)}
+                                        className={`px-3 py-1 rounded-md text-xs font-medium transition ${selectedTool === tool ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                                    >
+                                        {tool}
+                                    </button>
+                                ))}
+                            </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setActiveTab("pacing")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'pacing' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'text-slate-600 hover:bg-slate-100'}`}>
                                     📅 Pacing Diário
@@ -318,47 +442,190 @@
                                     📈 Relatórios & Gráficos
                                 </button>
                             </div>
-                        )}
-                    </div>
-
-                    {/* VISÃO GERAL */}
-                    {activeTab === "overview" && (
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            {PRODUCTS.map(prod => {
-                                const b = budgets[prod] || 0;
-                                const spent = totalSpentByProduct[prod] || 0;
-                                const pct = Math.min(Math.round((spent / b) * 100), 100);
-                                return (
-                                    <div key={prod} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                                        <h3 className="text-sm font-medium text-slate-500">{prod}</h3>
-                                        <p className="text-xl font-bold text-slate-900 mt-1">{formatBRL(b)}</p>
-                                        <div className="mt-4">
-                                            <div className="flex justify-between text-xs text-slate-500 mb-1">
-                                                <span>Consumo Realizado</span>
-                                                <span className="font-semibold">{formatBRL(spent)} ({pct}%)</span>
-                                            </div>
-                                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                                <div className="bg-blue-600 h-full rounded-full" style={{ width: `${pct}%` }}></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
                         </div>
                     )}
 
-                    {/* PACING DIÁRIO */}
+                    {/* VISÃO GERAL - PAINEL EXECUTIVO AVANÇADO */}
+                    {activeTab === "overview" && (
+                        <div className="space-y-6">
+                            {/* KPI CARDS GLOBAIS */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Orçamento Total Global</span>
+                                    <p className="text-2xl font-bold text-slate-900 mt-2">{formatBRL(overviewGlobalStats.totalBudget)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">Soma de todos os produtos do mês</p>
+                                </div>
+                                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Consumo Realizado Total</span>
+                                    <p className="text-2xl font-bold text-emerald-600 mt-2">{formatBRL(overviewGlobalStats.totalSpent)}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                            <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${overviewGlobalStats.totalPct}%` }}></div>
+                                        </div>
+                                        <span className="text-xs font-bold text-slate-600">{overviewGlobalStats.totalPct}%</span>
+                                    </div>
+                                </div>
+                                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Global Restante</span>
+                                    <p className="text-2xl font-bold text-blue-600 mt-2">{formatBRL(overviewGlobalStats.totalBalance)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">Disponível para o restante do período</p>
+                                </div>
+                                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Share por Canal (Mídia)</span>
+                                    <div className="flex justify-between items-center mt-3 text-xs">
+                                        <span className="font-semibold text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">Google: {overviewGlobalStats.googlePct}%</span>
+                                        <span className="font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">Meta: {overviewGlobalStats.metaPct}%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* GRÁFICO / TABELA COMPARATIVA POR PRODUTO */}
+                            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                            <Icon name="pie-chart" className="text-indigo-600" /> Distribuição de Orçamento vs. Consumo por Produto
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Acompanhamento consolidado de todas as verticais em {selectedMonth}</p>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm text-slate-700">
+                                        <thead className="bg-slate-100 text-slate-600 uppercase text-xs border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-4 py-3">Produto / Categoria</th>
+                                                <th className="px-4 py-3">Orçamento BAU</th>
+                                                <th className="px-4 py-3">Realizado (Auto)</th>
+                                                <th className="px-4 py-3">Saldo</th>
+                                                <th className="px-4 py-3">Progresso de Consumo</th>
+                                                <th className="px-4 py-3 text-right">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-200">
+                                            {PRODUCTS.map(prod => {
+                                                const b = currentMonthBudgets[prod] || 0;
+                                                const spent = totalSpentByProduct[prod] || 0;
+                                                const balance = b - spent;
+                                                const pct = b > 0 ? Math.min(Math.round((spent / b) * 100), 100) : 0;
+                                                const isOver = spent > b;
+
+                                                return (
+                                                    <tr key={prod} className="hover:bg-slate-50 transition">
+                                                        <td className="px-4 py-3 font-semibold text-slate-900">{prod}</td>
+                                                        <td className="px-4 py-3">{formatBRL(b)}</td>
+                                                        <td className="px-4 py-3 font-semibold text-emerald-600">{formatBRL(spent)}</td>
+                                                        <td className={`px-4 py-3 font-medium ${balance >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatBRL(balance)}</td>
+                                                        <td className="px-4 py-3 w-1/4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                                    <div className={`h-full rounded-full ${isOver ? 'bg-red-500' : 'bg-indigo-600'}`} style={{ width: `${pct}%` }}></div>
+                                                                </div>
+                                                                <span className={`text-xs font-bold ${isOver ? 'text-red-600' : 'text-slate-600'}`}>{pct}%</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <button 
+                                                                onClick={() => { setSelectedProduct(prod); setActiveTab("pacing"); }}
+                                                                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-semibold transition"
+                                                            >
+                                                                Gerenciar Pacing
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === "comparison" && (
+                        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+                            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                <Icon name="git-compare" className="text-emerald-600" /> Comparativo de Desempenho entre Meses
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Mês A (Base)</label>
+                                    <select value={compareMonthA} onChange={(e) => setCompareMonthA(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold">
+                                        {MONTHS_LIST.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Mês B (Comparação)</label>
+                                    <select value={compareMonthB} onChange={(e) => setCompareMonthB(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold">
+                                        {MONTHS_LIST.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                    <h3 className="text-xs font-semibold text-slate-500 uppercase">Orçamento Total BAU</h3>
+                                    <div className="flex justify-between items-baseline mt-3">
+                                        <div>
+                                            <p className="text-xs text-slate-400">Mês A</p>
+                                            <p className="text-lg font-bold text-slate-900">{formatBRL(getMonthBudgetTotal(compareMonthA))}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-slate-400">Mês B</p>
+                                            <p className="text-lg font-bold text-blue-600">{formatBRL(getMonthBudgetTotal(compareMonthB))}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                    <h3 className="text-xs font-semibold text-slate-500 uppercase">Consumo Realizado Total</h3>
+                                    <div className="flex justify-between items-baseline mt-3">
+                                        <div>
+                                            <p className="text-xs text-slate-400">Mês A</p>
+                                            <p className="text-lg font-bold text-slate-900">{formatBRL(getMonthSpentTotal(compareMonthA))}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-slate-400">Mês B</p>
+                                            <p className="text-lg font-bold text-emerald-600">{formatBRL(getMonthSpentTotal(compareMonthB))}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                                    <h3 className="text-xs font-semibold text-slate-500 uppercase">Variação de Investimento</h3>
+                                    <div className="mt-3">
+                                        {(() => {
+                                            const totalA = getMonthSpentTotal(compareMonthA);
+                                            const totalB = getMonthSpentTotal(compareMonthB);
+                                            const diff = totalB - totalA;
+                                            const pct = totalA > 0 ? ((diff / totalA) * 100).toFixed(1) : 0;
+                                            return (
+                                                <p className={`text-xl font-bold ${diff >= 0 ? 'text-emerald-600' : 'text-blue-600'}`}>
+                                                    {diff >= 0 ? `+${formatBRL(diff)} (+${pct}%)` : `${formatBRL(diff)} (${pct}%)`}
+                                                </p>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === "pacing" && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between">
-                                    <label className="text-xs font-semibold text-slate-500 uppercase">Orçamento Mensal BAU ({selectedProduct})</label>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Orçamento ({selectedProduct})</label>
                                     <input 
                                         type="number" 
-                                        value={budgets[selectedProduct] || 0} 
+                                        value={currentMonthBudgets[selectedProduct] || 0} 
                                         onChange={(e) => {
-                                            const newBudgets = { ...budgets, [selectedProduct]: Number(e.target.value) };
-                                            saveDataToCloud(newBudgets, campaigns);
+                                            const newBudgetsByMonth = { 
+                                                ...budgetsByMonth, 
+                                                [selectedMonth]: { 
+                                                    ...currentMonthBudgets, 
+                                                    [selectedProduct]: Number(e.target.value) 
+                                                } 
+                                            };
+                                            saveDataToCloud(newBudgetsByMonth, campaigns);
                                         }}
                                         className="mt-2 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-500"
                                     />
@@ -368,7 +635,7 @@
                                     <p className="text-xl font-bold text-emerald-600 mt-2">{formatBRL(currentKPIs.totalRealized)}</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-xs font-semibold text-slate-500 uppercase">Saldo BAU Restante</span>
+                                    <span className="text-xs font-semibold text-slate-500 uppercase">Saldo Restante</span>
                                     <p className="text-xl font-bold text-blue-600 mt-2">{formatBRL(currentKPIs.balance)}</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
@@ -397,7 +664,7 @@
                                                 <th className="px-4 py-3">Realizado (R$ - Auto)</th>
                                                 <th className="px-4 py-3">Delta</th>
                                                 <th className="px-4 py-3">Acumulado</th>
-                                                <th className="px-4 py-3">Saldo BAU</th>
+                                                <th className="px-4 py-3">Saldo</th>
                                                 <th className="px-4 py-3">Status</th>
                                             </tr>
                                         </thead>
@@ -430,11 +697,10 @@
                         </div>
                     )}
 
-                    {/* CAMPANHAS */}
                     {activeTab === "campaigns" && (
                         <div className="space-y-6">
                             <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                                <h3 className="text-lg font-bold text-slate-900 mb-4">Adicionar Nova Campanha</h3>
+                                <h3 className="text-lg font-bold text-slate-900 mb-4">Adicionar Nova Campanha ({selectedMonth})</h3>
                                 <form onSubmit={(e) => {
                                     e.preventDefault();
                                     const form = e.target;
@@ -447,7 +713,7 @@
                                         dailyData: {}
                                     };
                                     const newCamps = [...campaigns, newCamp];
-                                    saveDataToCloud(budgets, newCamps);
+                                    saveDataToCloud(budgetsByMonth, newCamps);
                                     form.reset();
                                 }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <input name="name" placeholder="Nome da Campanha" required className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900" />
@@ -472,7 +738,7 @@
                                             <th className="px-4 py-3">Produto</th>
                                             <th className="px-4 py-3">Ferramenta</th>
                                             <th className="px-4 py-3">Status</th>
-                                            <th className="px-4 py-3 text-center">Pacing Diário</th>
+                                            <th className="px-4 py-3 text-center">Pacing Diário ({selectedMonth})</th>
                                             <th className="px-4 py-3 text-right">Ações</th>
                                         </tr>
                                     </thead>
@@ -503,7 +769,7 @@
                                                     <button 
                                                         onClick={() => {
                                                             const newCamps = campaigns.filter(c => c.id !== camp.id);
-                                                            saveDataToCloud(budgets, newCamps);
+                                                            saveDataToCloud(budgetsByMonth, newCamps);
                                                         }}
                                                         className="text-red-500 hover:text-red-700 p-1 rounded"
                                                     >
@@ -518,28 +784,27 @@
                         </div>
                     )}
 
-                    {/* RELATÓRIOS */}
                     {activeTab === "reports" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                                <h3 className="text-lg font-bold text-slate-900 mb-4">Investimento por Ferramenta</h3>
+                                <h3 className="text-lg font-bold text-slate-900 mb-4">Investimento por Ferramenta ({selectedMonth})</h3>
                                 <div className="space-y-4">
                                     <div>
                                         <div className="flex justify-between text-sm mb-1 text-slate-700">
                                             <span>Google Ads</span>
-                                            <span className="font-bold">62%</span>
+                                            <span className="font-bold">{overviewGlobalStats.googlePct}%</span>
                                         </div>
                                         <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                            <div className="bg-amber-500 h-full rounded-full" style={{ width: '62%' }}></div>
+                                            <div className="bg-amber-500 h-full rounded-full" style={{ width: `${overviewGlobalStats.googlePct}%` }}></div>
                                         </div>
                                     </div>
                                     <div>
                                         <div className="flex justify-between text-sm mb-1 text-slate-700">
                                             <span>Meta Ads</span>
-                                            <span className="font-bold">38%</span>
+                                            <span className="font-bold">{overviewGlobalStats.metaPct}%</span>
                                         </div>
                                         <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                            <div className="bg-blue-600 h-full rounded-full" style={{ width: '38%' }}></div>
+                                            <div className="bg-blue-600 h-full rounded-full" style={{ width: `${overviewGlobalStats.metaPct}%` }}></div>
                                         </div>
                                     </div>
                                 </div>
@@ -548,8 +813,8 @@
                                 <h3 className="text-lg font-bold text-slate-900 mb-4">Distribuição do Orçamento Global</h3>
                                 <div className="space-y-3">
                                     {PRODUCTS.map(p => {
-                                        const totalB = Object.values(budgets).reduce((a,b)=>a+b, 1);
-                                        const pct = Math.round(((budgets[p] || 0) / totalB) * 100);
+                                        const totalB = Object.values(currentMonthBudgets).reduce((a,b)=>a+b, 1);
+                                        const pct = Math.round(((currentMonthBudgets[p] || 0) / totalB) * 100);
                                         return (
                                             <div key={p} className="flex items-center justify-between text-sm">
                                                 <span className="text-slate-700">{p}</span>
@@ -567,14 +832,13 @@
                         </div>
                     )}
 
-                    {/* MODAL DE PACING DIÁRIO POR CAMPANHA */}
                     {campaignPacingModal && (
                         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                             <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
                                 <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                                     <div>
                                         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                            <Icon name="calendar" className="text-indigo-600" /> Pacing Diário: {campaignPacingModal.name}
+                                            <Icon name="calendar" className="text-indigo-600" /> Pacing Diário ({selectedMonth}): {campaignPacingModal.name}
                                         </h3>
                                         <p className="text-xs text-slate-500 mt-0.5">Produto: {campaignPacingModal.product} | Canal: {campaignPacingModal.tool}</p>
                                     </div>
@@ -593,7 +857,8 @@
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {daysInMonth.map(day => {
-                                                const currentDaily = (campaignPacingModal.dailyData && campaignPacingModal.dailyData[day.dateStr]) || { planned: '', realized: '' };
+                                                const monthDaily = (campaignPacingModal.dailyData && campaignPacingModal.dailyData[selectedMonth]) || {};
+                                                const currentDaily = monthDaily[day.dateStr] || { planned: '', realized: '' };
                                                 return (
                                                     <tr key={day.dateStr} className="hover:bg-slate-50">
                                                         <td className="px-3 py-2 font-medium text-slate-900">{day.dateStr}</td>
@@ -605,10 +870,8 @@
                                                                 placeholder="0"
                                                                 onChange={(e) => {
                                                                     const val = e.target.value;
-                                                                    const updatedDailyData = { 
-                                                                        ...(campaignPacingModal.dailyData || {}), 
-                                                                        [day.dateStr]: { ...currentDaily, planned: val } 
-                                                                    };
+                                                                    const updatedMonthDaily = { ...monthDaily, [day.dateStr]: { ...currentDaily, planned: val } };
+                                                                    const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
                                                                     setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
                                                                 }}
                                                                 className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-28 text-slate-900"
@@ -621,10 +884,8 @@
                                                                 placeholder="0"
                                                                 onChange={(e) => {
                                                                     const val = e.target.value;
-                                                                    const updatedDailyData = { 
-                                                                        ...(campaignPacingModal.dailyData || {}), 
-                                                                        [day.dateStr]: { ...currentDaily, realized: val } 
-                                                                    };
+                                                                    const updatedMonthDaily = { ...monthDaily, [day.dateStr]: { ...currentDaily, realized: val } };
+                                                                    const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
                                                                     setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
                                                                 }}
                                                                 className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-28 text-slate-900 font-semibold text-emerald-600"
@@ -641,7 +902,7 @@
                                     <button 
                                         onClick={() => {
                                             const updatedCampaigns = campaigns.map(c => c.id === campaignPacingModal.id ? campaignPacingModal : c);
-                                            saveDataToCloud(budgets, updatedCampaigns);
+                                            saveDataToCloud(budgetsByMonth, updatedCampaigns);
                                             setCampaignPacingModal(null);
                                         }}
                                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-medium transition shadow"
@@ -656,7 +917,6 @@
                         </div>
                     )}
 
-                    {/* MODAL IA */}
                     {isAiModalOpen && (
                         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                             <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-xl">
@@ -676,7 +936,6 @@
                         </div>
                     )}
 
-                    {/* MODAL PARTILHA */}
                     {isShareModalOpen && (
                         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                             <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl">
