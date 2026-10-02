@@ -19,11 +19,10 @@
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
+<body class="bg-slate-50 text-slate-900 min-h-screen">
     <div id="root"></div>
 
     <script>
-        // Configuração do Firebase com as suas chaves
         const firebaseConfig = {
             apiKey: "AIzaSyDb1jyTxZCVsRltoV8cgNCH7oU24ypQx2U",
             authDomain: "dashboard-pacing.firebaseapp.com",
@@ -88,7 +87,6 @@
             const [isShareModalOpen, setIsShareModalOpen] = useState(false);
             const [syncStatus, setSyncStatus] = useState("A carregar nuvem...");
 
-            // Sincronização em tempo real com o Firestore
             useEffect(() => {
                 if (!window.db) return;
                 const docRef = window.db.collection("dash_data").doc("main_state");
@@ -101,7 +99,6 @@
                         if (data.manualPacing) setManualPacing(data.manualPacing);
                         setSyncStatus("Sincronizado com a nuvem");
                     } else {
-                        // Criar documento inicial se não existir
                         docRef.set({ budgets, campaigns, manualPacing });
                         setSyncStatus("Sincronizado com a nuvem");
                     }
@@ -113,7 +110,6 @@
                 return () => unsubscribe();
             }, []);
 
-            // Função para salvar alterações na nuvem
             const saveDataToCloud = (newBudgets, newCampaigns, newManualPacing) => {
                 setBudgets(newBudgets);
                 setCampaigns(newCampaigns);
@@ -237,37 +233,37 @@
 
             return (
                 <div className="max-w-7xl mx-auto px-4 py-6">
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-slate-800 pb-6">
+                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-slate-200 pb-6">
                         <div>
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
+                                <h1 className="text-2xl font-bold text-slate-900">
                                     Gestão de Mídia Performance & Pacing
                                 </h1>
-                                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 shadow-sm">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                                     {syncStatus}
                                 </span>
                             </div>
-                            <p className="text-slate-400 text-sm mt-1">Controle de BAU, Pacing Diário e Campanhas (Google & Meta Ads)</p>
+                            <p className="text-slate-500 text-sm mt-1">Controle de BAU, Pacing Diário e Campanhas (Google & Meta Ads)</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
-                            <button onClick={handleOpenAI} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg transition">
+                            <button onClick={handleOpenAI} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition">
                                 <Icon name="sparkles" className="w-4 h-4" /> Resumo IA
                             </button>
-                            <button onClick={handleExportCSV} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700 transition">
+                            <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium border border-slate-300 shadow-sm transition">
                                 <Icon name="download" className="w-4 h-4" /> Exportar Backup
                             </button>
-                            <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition">
+                            <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition">
                                 <Icon name="share" className="w-4 h-4" /> Partilhar Link
                             </button>
                         </div>
                     </header>
 
                     {/* Abas de Produtos */}
-                    <div className="flex flex-wrap gap-2 mb-6 bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+                    <div className="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
                         <button
                             onClick={() => setActiveTab("overview")}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "overview" ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "overview" ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                         >
                             📊 Visão Geral (Consolidado)
                         </button>
@@ -275,7 +271,7 @@
                             <button
                                 key={prod}
                                 onClick={() => { setSelectedProduct(prod); setActiveTab("pacing"); }}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab !== "overview" && selectedProduct === prod ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab !== "overview" && selectedProduct === prod ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                             >
                                 {prod}
                             </button>
@@ -283,14 +279,14 @@
                     </div>
 
                     {/* Filtro de Ferramentas */}
-                    <div className="flex justify-between items-center mb-6 bg-slate-900/40 px-4 py-3 rounded-xl border border-slate-800/80">
+                    <div className="flex justify-between items-center mb-6 bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm">
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Canal:</span>
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Canal:</span>
                             {["Todas", "Google Ads", "Meta Ads"].map(tool => (
                                 <button
                                     key={tool}
                                     onClick={() => setSelectedTool(tool)}
-                                    className={`px-3 py-1 rounded-md text-xs font-medium transition ${selectedTool === tool ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+                                    className={`px-3 py-1 rounded-md text-xs font-medium transition ${selectedTool === tool ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
                                 >
                                     {tool}
                                 </button>
@@ -298,13 +294,13 @@
                         </div>
                         {activeTab !== "overview" && (
                             <div className="flex gap-2">
-                                <button onClick={() => setActiveTab("pacing")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'pacing' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'text-slate-400 hover:bg-slate-800'}`}>
+                                <button onClick={() => setActiveTab("pacing")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'pacing' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'text-slate-600 hover:bg-slate-100'}`}>
                                     📅 Pacing Diário
                                 </button>
-                                <button onClick={() => setActiveTab("campaigns")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'campaigns' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'text-slate-400 hover:bg-slate-800'}`}>
+                                <button onClick={() => setActiveTab("campaigns")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'campaigns' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'text-slate-600 hover:bg-slate-100'}`}>
                                     🚀 Campanhas
                                 </button>
-                                <button onClick={() => setActiveTab("reports")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'reports' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'text-slate-400 hover:bg-slate-800'}`}>
+                                <button onClick={() => setActiveTab("reports")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'reports' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'text-slate-600 hover:bg-slate-100'}`}>
                                     📈 Relatórios & Gráficos
                                 </button>
                             </div>
@@ -319,16 +315,16 @@
                                 const spent = campaigns.filter(c => c.product === prod && c.status === "Ativa").reduce((acc, c) => acc + (Number(c.yesterdayRealized) * 30), 0);
                                 const pct = Math.min(Math.round((spent / b) * 100), 100);
                                 return (
-                                    <div key={prod} className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow">
-                                        <h3 className="text-sm font-medium text-slate-400">{prod}</h3>
-                                        <p className="text-xl font-bold text-white mt-1">{formatBRL(b)}</p>
+                                    <div key={prod} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                                        <h3 className="text-sm font-medium text-slate-500">{prod}</h3>
+                                        <p className="text-xl font-bold text-slate-900 mt-1">{formatBRL(b)}</p>
                                         <div className="mt-4">
-                                            <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                            <div className="flex justify-between text-xs text-slate-500 mb-1">
                                                 <span>Consumo Estimado</span>
-                                                <span>{pct}%</span>
+                                                <span className="font-semibold">{pct}%</span>
                                             </div>
-                                            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                                                <div className="bg-blue-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
+                                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                                <div className="bg-blue-600 h-full rounded-full" style={{ width: `${pct}%` }}></div>
                                             </div>
                                         </div>
                                     </div>
@@ -341,8 +337,8 @@
                     {activeTab === "pacing" && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                                    <label className="text-xs font-semibold text-slate-400 uppercase">Orçamento Mensal BAU ({selectedProduct})</label>
+                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Orçamento Mensal BAU ({selectedProduct})</label>
                                     <input 
                                         type="number" 
                                         value={budgets[selectedProduct] || 0} 
@@ -350,36 +346,36 @@
                                             const newBudgets = { ...budgets, [selectedProduct]: Number(e.target.value) };
                                             saveDataToCloud(newBudgets, campaigns, manualPacing);
                                         }}
-                                        className="mt-2 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-bold text-lg focus:outline-none focus:border-blue-500"
+                                        className="mt-2 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-500"
                                     />
                                 </div>
-                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase">Consumo Realizado</span>
-                                    <p className="text-xl font-bold text-emerald-400 mt-2">{formatBRL(currentKPIs.totalRealized)}</p>
+                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                    <span className="text-xs font-semibold text-slate-500 uppercase">Consumo Realizado</span>
+                                    <p className="text-xl font-bold text-emerald-600 mt-2">{formatBRL(currentKPIs.totalRealized)}</p>
                                 </div>
-                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase">Saldo BAU Restante</span>
-                                    <p className="text-xl font-bold text-blue-400 mt-2">{formatBRL(currentKPIs.balance)}</p>
+                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                    <span className="text-xs font-semibold text-slate-500 uppercase">Saldo BAU Restante</span>
+                                    <p className="text-xl font-bold text-blue-600 mt-2">{formatBRL(currentKPIs.balance)}</p>
                                 </div>
-                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase">Ontem: Realizado</span>
+                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                    <span className="text-xs font-semibold text-slate-500 uppercase">Ontem: Realizado</span>
                                     <div className="flex items-center gap-2 mt-2">
-                                        <span className="text-sm font-bold">{formatBRL(currentKPIs.lastDayRealized)}</span>
-                                        <span className={`text-xs px-2 py-0.5 rounded-full ${currentKPIs.lastDayStatus === 'Overbudget' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
+                                        <span className="text-sm font-bold text-slate-900">{formatBRL(currentKPIs.lastDayRealized)}</span>
+                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${currentKPIs.lastDayStatus === 'Overbudget' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                                             {currentKPIs.lastDayStatus}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase">Pacing Sugerido</span>
-                                    <p className="text-xl font-bold text-purple-400 mt-2">{formatBRL(currentKPIs.suggestedPacing)}/dia</p>
+                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                    <span className="text-xs font-semibold text-slate-500 uppercase">Pacing Sugerido</span>
+                                    <p className="text-xl font-bold text-purple-600 mt-2">{formatBRL(currentKPIs.suggestedPacing)}/dia</p>
                                 </div>
                             </div>
 
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow">
+                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm text-slate-300">
-                                        <thead className="bg-slate-950 text-slate-400 uppercase text-xs border-b border-slate-800">
+                                    <table className="w-full text-left text-sm text-slate-700">
+                                        <thead className="bg-slate-100 text-slate-600 uppercase text-xs border-b border-slate-200">
                                             <tr>
                                                 <th className="px-4 py-3">Data</th>
                                                 <th className="px-4 py-3">Dia</th>
@@ -391,13 +387,13 @@
                                                 <th className="px-4 py-3">Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-800">
+                                        <tbody className="divide-y divide-slate-200">
                                             {pacingRows.map((row) => {
                                                 const isOver10 = row.realized > row.planned * 1.1;
                                                 return (
-                                                    <tr key={row.dateStr} className={`hover:bg-slate-800/50 ${isOver10 ? 'bg-red-950/10' : ''} ${row.isToday ? 'bg-blue-950/20 font-semibold' : ''}`}>
-                                                        <td className="px-4 py-3">{row.dateStr}</td>
-                                                        <td className="px-4 py-3 text-slate-400">{row.weekday}</td>
+                                                    <tr key={row.dateStr} className={`hover:bg-slate-50 ${isOver10 ? 'bg-red-50/50' : ''} ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
+                                                        <td className="px-4 py-3 text-slate-900">{row.dateStr}</td>
+                                                        <td className="px-4 py-3 text-slate-500">{row.weekday}</td>
                                                         <td className="px-4 py-3">
                                                             <input 
                                                                 type="number"
@@ -406,7 +402,7 @@
                                                                     const newPacing = {...manualPacing, [`plan-${row.key}`]: e.target.value};
                                                                     saveDataToCloud(budgets, campaigns, newPacing);
                                                                 }}
-                                                                className="bg-slate-950 border border-slate-700 rounded px-2 py-1 w-28 text-white focus:outline-none focus:border-blue-500"
+                                                                className="bg-white border border-slate-300 rounded px-2 py-1 w-28 text-slate-900 focus:outline-none focus:border-blue-500"
                                                             />
                                                         </td>
                                                         <td className="px-4 py-3">
@@ -418,16 +414,16 @@
                                                                     saveDataToCloud(budgets, campaigns, newPacing);
                                                                 }}
                                                                 placeholder="0"
-                                                                className="bg-slate-950 border border-slate-700 rounded px-2 py-1 w-28 text-white focus:outline-none focus:border-blue-500"
+                                                                className="bg-white border border-slate-300 rounded px-2 py-1 w-28 text-slate-900 focus:outline-none focus:border-blue-500"
                                                             />
                                                         </td>
-                                                        <td className={`px-4 py-3 font-medium ${row.delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                        <td className={`px-4 py-3 font-medium ${row.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                                             {row.delta > 0 ? `+${formatBRL(row.delta)}` : formatBRL(row.delta)}
                                                         </td>
-                                                        <td className="px-4 py-3">{formatBRL(row.accumulated)}</td>
-                                                        <td className="px-4 py-3 text-blue-400">{formatBRL(row.balance)}</td>
+                                                        <td className="px-4 py-3 text-slate-900">{formatBRL(row.accumulated)}</td>
+                                                        <td className="px-4 py-3 text-blue-600">{formatBRL(row.balance)}</td>
                                                         <td className="px-4 py-3">
-                                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${row.status === 'Overbudget' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
+                                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${row.status === 'Overbudget' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                                                                 {row.status}
                                                             </span>
                                                         </td>
@@ -444,8 +440,8 @@
                     {/* CAMPANHAS */}
                     {activeTab === "campaigns" && (
                         <div className="space-y-6">
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow">
-                                <h3 className="text-lg font-bold text-white mb-4">Adicionar Nova Campanha</h3>
+                            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                                <h3 className="text-lg font-bold text-slate-900 mb-4">Adicionar Nova Campanha</h3>
                                 <form onSubmit={(e) => {
                                     e.preventDefault();
                                     const form = e.target;
@@ -462,27 +458,27 @@
                                     saveDataToCloud(budgets, newCamps, manualPacing);
                                     form.reset();
                                 }} className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                    <input name="name" placeholder="Nome da Campanha" required className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" />
-                                    <select name="product" className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                                    <input name="name" placeholder="Nome da Campanha" required className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900" />
+                                    <select name="product" className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900">
                                         {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
                                     </select>
-                                    <select name="tool" className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                                    <select name="tool" className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900">
                                         <option value="Google Ads">Google Ads</option>
                                         <option value="Meta Ads">Meta Ads</option>
                                     </select>
-                                    <input name="plannedDaily" type="number" placeholder="Investimento Diário Planejado" required className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white" />
+                                    <input name="plannedDaily" type="number" placeholder="Investimento Diário Planejado" required className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900" />
                                     <div className="flex gap-2">
-                                        <input name="yesterdayRealized" type="number" placeholder="Realizado Ontem" required className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white w-full" />
-                                        <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-4 rounded-lg font-medium flex items-center justify-center">
+                                        <input name="yesterdayRealized" type="number" placeholder="Realizado Ontem" required className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 w-full" />
+                                        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-lg font-medium flex items-center justify-center shadow">
                                             <Icon name="plus" />
                                         </button>
                                     </div>
                                 </form>
                             </div>
 
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow">
-                                <table className="w-full text-left text-sm text-slate-300">
-                                    <thead className="bg-slate-950 text-slate-400 uppercase text-xs border-b border-slate-800">
+                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                <table className="w-full text-left text-sm text-slate-700">
+                                    <thead className="bg-slate-100 text-slate-600 uppercase text-xs border-b border-slate-200">
                                         <tr>
                                             <th className="px-4 py-3">Campanha</th>
                                             <th className="px-4 py-3">Produto</th>
@@ -493,13 +489,13 @@
                                             <th className="px-4 py-3 text-right">Ações</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-800">
+                                    <tbody className="divide-y divide-slate-200">
                                         {campaigns.filter(c => selectedTool === 'Todas' || c.tool === selectedTool).map(camp => (
-                                            <tr key={camp.id} className="hover:bg-slate-800/50">
-                                                <td className="px-4 py-3 font-semibold text-white">{camp.name}</td>
+                                            <tr key={camp.id} className="hover:bg-slate-50">
+                                                <td className="px-4 py-3 font-semibold text-slate-900">{camp.name}</td>
                                                 <td className="px-4 py-3">{camp.product}</td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${camp.tool === 'Google Ads' ? 'bg-amber-500/20 text-amber-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${camp.tool === 'Google Ads' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
                                                         {camp.tool}
                                                     </span>
                                                 </td>
@@ -513,11 +509,11 @@
                                                             const newCamps = campaigns.map(c => c.id === camp.id ? {...c, yesterdayRealized: val} : c);
                                                             saveDataToCloud(budgets, newCamps, manualPacing);
                                                         }}
-                                                        className="bg-slate-950 border border-slate-700 rounded px-2 py-1 w-28 text-white"
+                                                        className="bg-white border border-slate-300 rounded px-2 py-1 w-28 text-slate-900"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400">
+                                                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                         {camp.status}
                                                     </span>
                                                 </td>
@@ -527,7 +523,7 @@
                                                             const newCamps = campaigns.filter(c => c.id !== camp.id);
                                                             saveDataToCloud(budgets, newCamps, manualPacing);
                                                         }}
-                                                        className="text-red-400 hover:text-red-300 p-1 rounded"
+                                                        className="text-red-500 hover:text-red-700 p-1 rounded"
                                                     >
                                                         <Icon name="trash" className="w-4 h-4" />
                                                     </button>
@@ -543,43 +539,43 @@
                     {/* RELATÓRIOS */}
                     {activeTab === "reports" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow">
-                                <h3 className="text-lg font-bold text-white mb-4">Investimento por Ferramenta</h3>
+                            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                                <h3 className="text-lg font-bold text-slate-900 mb-4">Investimento por Ferramenta</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <div className="flex justify-between text-sm mb-1">
+                                        <div className="flex justify-between text-sm mb-1 text-slate-700">
                                             <span>Google Ads</span>
                                             <span className="font-bold">62%</span>
                                         </div>
-                                        <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+                                        <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
                                             <div className="bg-amber-500 h-full rounded-full" style={{ width: '62%' }}></div>
                                         </div>
                                     </div>
                                     <div>
-                                        <div className="flex justify-between text-sm mb-1">
+                                        <div className="flex justify-between text-sm mb-1 text-slate-700">
                                             <span>Meta Ads</span>
                                             <span className="font-bold">38%</span>
                                         </div>
-                                        <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
-                                            <div className="bg-blue-500 h-full rounded-full" style={{ width: '38%' }}></div>
+                                        <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                                            <div className="bg-blue-600 h-full rounded-full" style={{ width: '38%' }}></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow">
-                                <h3 className="text-lg font-bold text-white mb-4">Distribuição do Orçamento Global</h3>
+                            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                                <h3 className="text-lg font-bold text-slate-900 mb-4">Distribuição do Orçamento Global</h3>
                                 <div className="space-y-3">
                                     {PRODUCTS.map(p => {
                                         const totalB = Object.values(budgets).reduce((a,b)=>a+b, 1);
                                         const pct = Math.round(((budgets[p] || 0) / totalB) * 100);
                                         return (
                                             <div key={p} className="flex items-center justify-between text-sm">
-                                                <span className="text-slate-300">{p}</span>
+                                                <span className="text-slate-700">{p}</span>
                                                 <div className="flex items-center gap-3 w-1/2">
-                                                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                                                        <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
+                                                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                                        <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${pct}%` }}></div>
                                                     </div>
-                                                    <span className="text-xs font-bold text-slate-400">{pct}%</span>
+                                                    <span className="text-xs font-bold text-slate-500">{pct}%</span>
                                                 </div>
                                             </div>
                                         );
@@ -591,18 +587,18 @@
 
                     {/* MODAL IA */}
                     {isAiModalOpen && (
-                        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-                            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                            <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-xl">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                        <Icon name="sparkles" className="text-purple-400" /> Analista de Mídia IA
+                                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                        <Icon name="sparkles" className="text-purple-600" /> Analista de Mídia IA
                                     </h3>
-                                    <button onClick={() => setIsAiModalOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+                                    <button onClick={() => setIsAiModalOpen(false)} className="text-slate-400 hover:text-slate-700">✕</button>
                                 </div>
-                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-slate-300 text-sm whitespace-pre-line leading-relaxed">
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-slate-700 text-sm whitespace-pre-line leading-relaxed">
                                     {aiText}
                                 </div>
-                                <button onClick={() => setIsAiModalOpen(false)} className="mt-6 w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-xl font-medium transition">
+                                <button onClick={() => setIsAiModalOpen(false)} className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl font-medium transition shadow">
                                     Fechar
                                 </button>
                             </div>
@@ -611,16 +607,16 @@
 
                     {/* MODAL PARTILHA */}
                     {isShareModalOpen && (
-                        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-                            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-                                <h3 className="text-lg font-bold text-white mb-2">Partilhar Dashboard</h3>
-                                <p className="text-sm text-slate-400 mb-4">Copie o link abaixo para aceder ao painel publicado:</p>
+                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                            <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl">
+                                <h3 className="text-lg font-bold text-slate-900 mb-2">Partilhar Dashboard</h3>
+                                <p className="text-sm text-slate-500 mb-4">Copie o link abaixo para aceder ao painel publicado:</p>
                                 <input 
                                     type="text" 
                                     readOnly 
                                     value={window.location.href}
                                     onClick={(e) => e.target.select()}
-                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm mb-4 select-all"
+                                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-sm mb-4 select-all"
                                 />
                                 <div className="flex gap-2">
                                     <button 
@@ -628,11 +624,11 @@
                                             navigator.clipboard.writeText(window.location.href);
                                             alert("Link copiado para a área de transferência!");
                                         }}
-                                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl font-medium transition"
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl font-medium transition shadow"
                                     >
                                         Copiar Link
                                     </button>
-                                    <button onClick={() => setIsShareModalOpen(false)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl font-medium transition">
+                                    <button onClick={() => setIsShareModalOpen(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-medium transition">
                                         Fechar
                                     </button>
                                 </div>
