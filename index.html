@@ -39,20 +39,23 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        const Icon = ({ name, className = "w-5 h-5", ...props }) => {
+        const Icon = ({ name, className = "", ...props }) => {
+            const hasWidth = className.includes('w-');
+            const cls = hasWidth ? className : `w-5 h-5 ${className}`;
+
             switch(name) {
-                case 'layout': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>;
-                case 'trending': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
-                case 'dollar': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
-                case 'calendar': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>;
-                case 'sparkles': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
-                case 'download': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
-                case 'share': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>;
-                case 'plus': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
-                case 'trash': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
-                case 'git-compare': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>;
-                case 'pie-chart': return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
-                default: return <svg className={className} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
+                case 'layout': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>;
+                case 'trending': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
+                case 'dollar': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
+                case 'calendar': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>;
+                case 'sparkles': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
+                case 'download': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
+                case 'share': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>;
+                case 'plus': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+                case 'trash': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
+                case 'git-compare': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>;
+                case 'pie-chart': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
+                default: return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
             }
         };
 
@@ -220,7 +223,6 @@
                 return map;
             }, [campaigns, selectedMonth, selectedTool]);
 
-            // Estatísticas consolidadas globais para o Overview
             const overviewGlobalStats = useMemo(() => {
                 let totalBudget = 0;
                 let totalSpent = 0;
@@ -445,10 +447,9 @@
                         </div>
                     )}
 
-                    {/* VISÃO GERAL - PAINEL EXECUTIVO AVANÇADO */}
+                    {/* VISÃO GERAL */}
                     {activeTab === "overview" && (
                         <div className="space-y-6">
-                            {/* KPI CARDS GLOBAIS */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                                     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Orçamento Total Global</span>
@@ -479,12 +480,14 @@
                                 </div>
                             </div>
 
-                            {/* GRÁFICO / TABELA COMPARATIVA POR PRODUTO */}
                             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                                 <div className="flex justify-between items-center mb-6">
                                     <div>
-                                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                            <Icon name="pie-chart" className="text-indigo-600" /> Distribuição de Orçamento vs. Consumo por Produto
+                                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
+                                            <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
+                                                <Icon name="pie-chart" className="w-5 h-5" />
+                                            </div>
+                                            Distribuição de Orçamento vs. Consumo por Produto
                                         </h3>
                                         <p className="text-xs text-slate-500 mt-0.5">Acompanhamento consolidado de todas as verticais em {selectedMonth}</p>
                                     </div>
@@ -542,10 +545,14 @@
                         </div>
                     )}
 
+                    {/* COMPARATIVO */}
                     {activeTab === "comparison" && (
                         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
-                            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                <Icon name="git-compare" className="text-emerald-600" /> Comparativo de Desempenho entre Meses
+                            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
+                                <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
+                                    <Icon name="git-compare" className="w-5 h-5" />
+                                </div>
+                                Comparativo de Desempenho entre Meses
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
                                 <div>
