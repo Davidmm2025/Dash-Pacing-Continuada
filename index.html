@@ -75,60 +75,22 @@
                 "Profissionalizantes": 20000
             });
 
+            // Cada campanha armazena os seus dados diários em dailyData: { "01/10": { planned, realized } }
             const [campaigns, setCampaigns] = useState([
-                { id: 1, name: "Google Search - Institucional", product: "Pós-graduação", tool: "Google Ads", plannedDaily: 800, yesterdayRealized: 850, status: "Ativa" },
-                { id: 2, name: "Meta Ads - Conversão Leads", product: "Pós-graduação", tool: "Meta Ads", plannedDaily: 600, yesterdayRealized: 580, status: "Ativa" },
-                { id: 3, name: "Google PMax - Pós Híbrida", product: "Pós-híbrida", tool: "Google Ads", plannedDaily: 700, yesterdayRealized: 720, status: "Ativa" }
+                { id: 1, name: "Google Search - Institucional", product: "Pós-graduação", tool: "Google Ads", status: "Ativa", dailyData: {} },
+                { id: 2, name: "Meta Ads - Conversão Leads", product: "Pós-graduação", tool: "Meta Ads", status: "Ativa", dailyData: {} },
+                { id: 3, name: "Google PMax - Pós Híbrida", product: "Pós-híbrida", tool: "Google Ads", status: "Ativa", dailyData: {} }
             ]);
 
-            const [manualPacing, setManualPacing] = useState({});
             const [isAiModalOpen, setIsAiModalOpen] = useState(false);
             const [aiText, setAiText] = useState("");
             const [isShareModalOpen, setIsShareModalOpen] = useState(false);
             const [syncStatus, setSyncStatus] = useState("A carregar nuvem...");
 
-            useEffect(() => {
-                if (!window.db) return;
-                const docRef = window.db.collection("dash_data").doc("main_state");
-                
-                const unsubscribe = docRef.onSnapshot((docSnap) => {
-                    if (docSnap.exists) {
-                        const data = docSnap.data();
-                        if (data.budgets) setBudgets(data.budgets);
-                        if (data.campaigns) setCampaigns(data.campaigns);
-                        if (data.manualPacing) setManualPacing(data.manualPacing);
-                        setSyncStatus("Sincronizado com a nuvem");
-                    } else {
-                        docRef.set({ budgets, campaigns, manualPacing });
-                        setSyncStatus("Sincronizado com a nuvem");
-                    }
-                }, (error) => {
-                    console.error("Erro ao sincronizar:", error);
-                    setSyncStatus("Modo local (Offline)");
-                });
+            // Estado para o Modal de Pacing Diário por Campanha
+            const [campaignPacingModal, setCampaignPacingModal] = useState(null); // guarda o objeto da campanha em edição
 
-                return () => unsubscribe();
-            }, []);
-
-            const saveDataToCloud = (newBudgets, newCampaigns, newManualPacing) => {
-                setBudgets(newBudgets);
-                setCampaigns(newCampaigns);
-                setManualPacing(newManualPacing);
-
-                if (window.db) {
-                    setSyncStatus("A guardar...");
-                    window.db.collection("dash_data").doc("main_state").set({
-                        budgets: newBudgets,
-                        campaigns: newCampaigns,
-                        manualPacing: newManualPacing
-                    }).then(() => {
-                        setSyncStatus("Sincronizado com a nuvem");
-                    }).catch(() => {
-                        setSyncStatus("Erro ao guardar");
-                    });
-                }
-            };
-
+            // Dias do mês atual dinâmicos
             const daysInMonth = useMemo(() => {
                 const now = new Date();
                 const year = now.getFullYear();
@@ -150,35 +112,91 @@
                 return days;
             }, []);
 
+            useEffect(() => {
+                if (!window.db) return;
+                const docRef = window.db.collection("dash_data").doc("main_state_v2");
+                
+                const unsubscribe = docRef.onSnapshot((docSnap) => {
+                    if (docSnap.exists) {
+                        const data = docSnap.data();
+                        if (data.budgets) setBudgets(data.budgets);
+                        if (data.campaigns) setCampaigns(data.campaigns);
+                        setSyncStatus("Sincronizado com a nuvem");
+                    } else {
+                        docRef.set({ budgets, campaigns });
+                        setSyncStatus("Sincronizado com a nuvem");
+                    }
+                }, (error) => {
+                    console.error("Erro ao sincronizar:", error);
+                    setSyncStatus("Modo local (Offline)");
+                });
+
+                return () => unsubscribe();
+            }, []);
+
+            const saveDataToCloud = (newBudgets, newCampaigns) => {
+                setBudgets(newBudgets);
+                setCampaigns(newCampaigns);
+
+                if (window.db) {
+                    setSyncStatus("A guardar...");
+                    window.db.collection("dash_data").doc("main_state_v2").set({
+                        budgets: newBudgets,
+                        campaigns: newCampaigns
+                    }).then(() => {
+                        setSyncStatus("Sincronizado com a nuvem");
+                    }).catch(() => {
+                        setSyncStatus("Erro ao guardar");
+                    });
+                }
+            };
+
             const formatBRL = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
-            const yesterdayTotalByProduct = useMemo(() => {
+            // Consumo total estimado mensal baseado nas campanhas ativas
+            const totalSpentByProduct = useMemo(() => {
                 const map = {};
                 PRODUCTS.forEach(prod => {
-                    map[prod] = campaigns
-                        .filter(c => c.product === prod && c.status === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool))
-                        .reduce((acc, c) => acc + (Number(c.yesterdayRealized) || 0), 0);
+                    let total = 0;
+                    campaigns.filter(c => c.product === prod && c.status === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool)).forEach(c => {
+                        if (c.dailyData) {
+                            Object.values(c.dailyData).forEach(d => {
+                                total += Number(d.realized) || 0;
+                            });
+                        }
+                    });
+                    map[prod] = total;
                 });
                 return map;
             }, [campaigns, selectedTool]);
 
+            // Tabela de Pacing do Produto calculada automaticamente pela soma das Campanhas do Produto
             const pacingRows = useMemo(() => {
                 const prodBudget = budgets[selectedProduct] || 0;
                 const totalDays = daysInMonth.length;
                 const defaultDaily = prodBudget / totalDays;
 
                 let accumulated = 0;
-                return daysInMonth.map((day, idx) => {
-                    const key = `${selectedProduct}-${day.dateStr}`;
-                    let realized = 0;
+                return daysInMonth.map((day) => {
+                    // Soma o planejado e o realizado de todas as campanhas deste produto e ferramenta para este dia
+                    let dayPlanned = 0;
+                    let dayRealized = 0;
+                    let hasCampaignData = false;
 
-                    if (day.isPast) {
-                        realized = manualPacing[key] !== undefined ? Number(manualPacing[key]) : (idx === 5 ? (yesterdayTotalByProduct[selectedProduct] || defaultDaily) : defaultDaily * 0.95);
-                    } else if (day.isToday) {
-                        realized = manualPacing[key] !== undefined ? Number(manualPacing[key]) : 0;
-                    }
+                    campaigns
+                        .filter(c => c.product === selectedProduct && c.status === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool))
+                        .forEach(c => {
+                            if (c.dailyData && c.dailyData[day.dateStr]) {
+                                hasCampaignData = true;
+                                dayPlanned += Number(c.dailyData[day.dateStr].planned) || 0;
+                                dayRealized += Number(c.dailyData[day.dateStr].realized) || 0;
+                            }
+                        });
 
-                    const planned = manualPacing[`plan-${key}`] !== undefined ? Number(manualPacing[`plan-${key}`]) : defaultDaily;
+                    // Se não houver dados preenchidos nas campanhas para este dia, usa o padrão aritmético do BAU
+                    const planned = hasCampaignData ? dayPlanned : defaultDaily;
+                    const realized = dayRealized;
+
                     accumulated += realized;
                     const balance = prodBudget - accumulated;
                     const delta = realized - planned;
@@ -187,9 +205,9 @@
                     if (realized > planned * 1.1) status = "Overbudget";
                     else if (realized < planned * 0.9 && day.isPast) status = "Underbudget";
 
-                    return { ...day, planned, realized, delta, accumulated, balance, status, key };
+                    return { ...day, planned, realized, delta, accumulated, balance, status };
                 });
-            }, [selectedProduct, budgets, daysInMonth, manualPacing, yesterdayTotalByProduct]);
+            }, [selectedProduct, budgets, daysInMonth, campaigns, selectedTool]);
 
             const currentKPIs = useMemo(() => {
                 const budget = budgets[selectedProduct] || 0;
@@ -213,7 +231,7 @@
             const handleExportCSV = () => {
                 let csv = "Tipo,Produto,Ferramenta,Orçamento/Nome,Valor/Detalhes\n";
                 PRODUCTS.forEach(p => csv += `Orcamento,${p},Geral,-,${budgets[p]}\n`);
-                campaigns.forEach(c => csv += `Campanha,${c.product},${c.tool},"${c.name}",${c.plannedDaily}\n`);
+                campaigns.forEach(c => csv += `Campanha,${c.product},${c.tool},"${c.name}",Ativa\n`);
                 
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
@@ -244,7 +262,7 @@
                                     {syncStatus}
                                 </span>
                             </div>
-                            <p className="text-slate-500 text-sm mt-1">Controle de BAU, Pacing Diário e Campanhas (Google & Meta Ads)</p>
+                            <p className="text-slate-500 text-sm mt-1">Controle de BAU, Pacing Diário por Campanha e Campanhas (Google & Meta Ads)</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
                             <button onClick={handleOpenAI} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition">
@@ -312,7 +330,7 @@
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             {PRODUCTS.map(prod => {
                                 const b = budgets[prod] || 0;
-                                const spent = campaigns.filter(c => c.product === prod && c.status === "Ativa").reduce((acc, c) => acc + (Number(c.yesterdayRealized) * 30), 0);
+                                const spent = totalSpentByProduct[prod] || 0;
                                 const pct = Math.min(Math.round((spent / b) * 100), 100);
                                 return (
                                     <div key={prod} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
@@ -320,8 +338,8 @@
                                         <p className="text-xl font-bold text-slate-900 mt-1">{formatBRL(b)}</p>
                                         <div className="mt-4">
                                             <div className="flex justify-between text-xs text-slate-500 mb-1">
-                                                <span>Consumo Estimado</span>
-                                                <span className="font-semibold">{pct}%</span>
+                                                <span>Consumo Realizado</span>
+                                                <span className="font-semibold">{formatBRL(spent)} ({pct}%)</span>
                                             </div>
                                             <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                                                 <div className="bg-blue-600 h-full rounded-full" style={{ width: `${pct}%` }}></div>
@@ -344,7 +362,7 @@
                                         value={budgets[selectedProduct] || 0} 
                                         onChange={(e) => {
                                             const newBudgets = { ...budgets, [selectedProduct]: Number(e.target.value) };
-                                            saveDataToCloud(newBudgets, campaigns, manualPacing);
+                                            saveDataToCloud(newBudgets, campaigns);
                                         }}
                                         className="mt-2 bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-500"
                                     />
@@ -358,7 +376,7 @@
                                     <p className="text-xl font-bold text-blue-600 mt-2">{formatBRL(currentKPIs.balance)}</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-xs font-semibold text-slate-500 uppercase">Ontem: Realizado</span>
+                                    <span className="text-xs font-semibold text-slate-500 uppercase">Último Realizado</span>
                                     <div className="flex items-center gap-2 mt-2">
                                         <span className="text-sm font-bold text-slate-900">{formatBRL(currentKPIs.lastDayRealized)}</span>
                                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${currentKPIs.lastDayStatus === 'Overbudget' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
@@ -380,7 +398,7 @@
                                                 <th className="px-4 py-3">Data</th>
                                                 <th className="px-4 py-3">Dia</th>
                                                 <th className="px-4 py-3">Meta Planejada (R$)</th>
-                                                <th className="px-4 py-3">Realizado (R$)</th>
+                                                <th className="px-4 py-3">Realizado (R$ - Auto)</th>
                                                 <th className="px-4 py-3">Delta</th>
                                                 <th className="px-4 py-3">Acumulado</th>
                                                 <th className="px-4 py-3">Saldo BAU</th>
@@ -394,29 +412,8 @@
                                                     <tr key={row.dateStr} className={`hover:bg-slate-50 ${isOver10 ? 'bg-red-50/50' : ''} ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
                                                         <td className="px-4 py-3 text-slate-900">{row.dateStr}</td>
                                                         <td className="px-4 py-3 text-slate-500">{row.weekday}</td>
-                                                        <td className="px-4 py-3">
-                                                            <input 
-                                                                type="number"
-                                                                value={manualPacing[`plan-${row.key}`] !== undefined ? manualPacing[`plan-${row.key}`] : Math.round(row.planned)}
-                                                                onChange={(e) => {
-                                                                    const newPacing = {...manualPacing, [`plan-${row.key}`]: e.target.value};
-                                                                    saveDataToCloud(budgets, campaigns, newPacing);
-                                                                }}
-                                                                className="bg-white border border-slate-300 rounded px-2 py-1 w-28 text-slate-900 focus:outline-none focus:border-blue-500"
-                                                            />
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <input 
-                                                                type="number"
-                                                                value={manualPacing[row.key] !== undefined ? manualPacing[row.key] : (row.realized ? Math.round(row.realized) : '')}
-                                                                onChange={(e) => {
-                                                                    const newPacing = {...manualPacing, [row.key]: e.target.value};
-                                                                    saveDataToCloud(budgets, campaigns, newPacing);
-                                                                }}
-                                                                placeholder="0"
-                                                                className="bg-white border border-slate-300 rounded px-2 py-1 w-28 text-slate-900 focus:outline-none focus:border-blue-500"
-                                                            />
-                                                        </td>
+                                                        <td className="px-4 py-3">{formatBRL(row.planned)}</td>
+                                                        <td className="px-4 py-3 font-semibold text-emerald-600">{formatBRL(row.realized)}</td>
                                                         <td className={`px-4 py-3 font-medium ${row.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                                             {row.delta > 0 ? `+${formatBRL(row.delta)}` : formatBRL(row.delta)}
                                                         </td>
@@ -450,14 +447,13 @@
                                         name: form.name.value,
                                         product: form.product.value,
                                         tool: form.tool.value,
-                                        plannedDaily: Number(form.plannedDaily.value),
-                                        yesterdayRealized: Number(form.yesterdayRealized.value),
-                                        status: "Ativa"
+                                        status: "Ativa",
+                                        dailyData: {}
                                     };
                                     const newCamps = [...campaigns, newCamp];
-                                    saveDataToCloud(budgets, newCamps, manualPacing);
+                                    saveDataToCloud(budgets, newCamps);
                                     form.reset();
-                                }} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                                }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <input name="name" placeholder="Nome da Campanha" required className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900" />
                                     <select name="product" className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900">
                                         {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
@@ -466,13 +462,9 @@
                                         <option value="Google Ads">Google Ads</option>
                                         <option value="Meta Ads">Meta Ads</option>
                                     </select>
-                                    <input name="plannedDaily" type="number" placeholder="Investimento Diário Planejado" required className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900" />
-                                    <div className="flex gap-2">
-                                        <input name="yesterdayRealized" type="number" placeholder="Realizado Ontem" required className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 w-full" />
-                                        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-lg font-medium flex items-center justify-center shadow">
-                                            <Icon name="plus" />
-                                        </button>
-                                    </div>
+                                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-lg font-medium flex items-center justify-center gap-2 shadow">
+                                        <Icon name="plus" /> Adicionar Campanha
+                                    </button>
                                 </form>
                             </div>
 
@@ -483,9 +475,8 @@
                                             <th className="px-4 py-3">Campanha</th>
                                             <th className="px-4 py-3">Produto</th>
                                             <th className="px-4 py-3">Ferramenta</th>
-                                            <th className="px-4 py-3">Investimento Diário Planejado</th>
-                                            <th className="px-4 py-3">Realizado Ontem</th>
                                             <th className="px-4 py-3">Status</th>
+                                            <th className="px-4 py-3 text-center">Pacing Diário</th>
                                             <th className="px-4 py-3 text-right">Ações</th>
                                         </tr>
                                     </thead>
@@ -499,29 +490,25 @@
                                                         {camp.tool}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3">{formatBRL(camp.plannedDaily)}</td>
-                                                <td className="px-4 py-3">
-                                                    <input 
-                                                        type="number"
-                                                        value={camp.yesterdayRealized}
-                                                        onChange={(e) => {
-                                                            const val = Number(e.target.value);
-                                                            const newCamps = campaigns.map(c => c.id === camp.id ? {...c, yesterdayRealized: val} : c);
-                                                            saveDataToCloud(budgets, newCamps, manualPacing);
-                                                        }}
-                                                        className="bg-white border border-slate-300 rounded px-2 py-1 w-28 text-slate-900"
-                                                    />
-                                                </td>
                                                 <td className="px-4 py-3">
                                                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                         {camp.status}
                                                     </span>
                                                 </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <button 
+                                                        onClick={() => setCampaigns(JSON.parse(JSON.stringify(camp)))} // abre modal
+                                                        onClick={() => setCampaignPacingModal(camp)}
+                                                        className="inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                                                    >
+                                                        <Icon name="calendar" className="w-3.5 h-3.5" /> Gerenciar Pacing Diário
+                                                    </button>
+                                                </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <button 
                                                         onClick={() => {
                                                             const newCamps = campaigns.filter(c => c.id !== camp.id);
-                                                            saveDataToCloud(budgets, newCamps, manualPacing);
+                                                            saveDataToCloud(budgets, newCamps);
                                                         }}
                                                         className="text-red-500 hover:text-red-700 p-1 rounded"
                                                     >
@@ -580,6 +567,95 @@
                                             </div>
                                         );
                                     })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL DE PACING DIÁRIO POR CAMPANHA */}
+                    {campaignPacingModal && (
+                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                            <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
+                                <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                            <Icon name="calendar" className="text-indigo-600" /> Pacing Diário: {campaignPacingModal.name}
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Produto: {campaignPacingModal.product} | Canal: {campaignPacingModal.tool}</p>
+                                    </div>
+                                    <button onClick={() => setCampaignPacingModal(null)} className="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+                                </div>
+
+                                <div className="overflow-y-auto flex-1 pr-2 space-y-2">
+                                    <table className="w-full text-left text-sm text-slate-700">
+                                        <thead className="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0">
+                                            <tr>
+                                                <th className="px-3 py-2">Data</th>
+                                                <th className="px-3 py-2">Dia</th>
+                                                <th className="px-3 py-2">Planejado (R$)</th>
+                                                <th className="px-3 py-2">Realizado (R$)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {daysInMonth.map(day => {
+                                                const currentDaily = (campaignPacingModal.dailyData && campaignPacingModal.dailyData[day.dateStr]) || { planned: '', realized: '' };
+                                                return (
+                                                    <tr key={day.dateStr} className="hover:bg-slate-50">
+                                                        <td className="px-3 py-2 font-medium text-slate-900">{day.dateStr}</td>
+                                                        <td className="px-3 py-2 text-slate-500">{day.weekday}</td>
+                                                        <td className="px-3 py-2">
+                                                            <input 
+                                                                type="number"
+                                                                value={currentDaily.planned}
+                                                                placeholder="0"
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    const updatedDailyData = { 
+                                                                        ...(campaignPacingModal.dailyData || {}), 
+                                                                        [day.dateStr]: { ...currentDaily, planned: val } 
+                                                                    };
+                                                                    setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
+                                                                }}
+                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-28 text-slate-900"
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <input 
+                                                                type="number"
+                                                                value={currentDaily.realized}
+                                                                placeholder="0"
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    const updatedDailyData = { 
+                                                                        ...(campaignPacingModal.dailyData || {}), 
+                                                                        [day.dateStr]: { ...currentDaily, realized: val } 
+                                                                    };
+                                                                    setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
+                                                                }}
+                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-28 text-slate-900 font-semibold text-emerald-600"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3">
+                                    <button 
+                                        onClick={() => {
+                                            const updatedCampaigns = campaigns.map(c => c.id === campaignPacingModal.id ? campaignPacingModal : c);
+                                            saveDataToCloud(budgets, updatedCampaigns);
+                                            setCampaignPacingModal(null);
+                                        }}
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-medium transition shadow"
+                                    >
+                                        Guardar e Atualizar Pacing
+                                    </button>
+                                    <button onClick={() => setCampaignPacingModal(null)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-medium transition">
+                                        Cancelar
+                                    </button>
                                 </div>
                             </div>
                         </div>
