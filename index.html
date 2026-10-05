@@ -59,6 +59,7 @@
                 case 'git-compare': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>;
                 case 'pie-chart': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
                 case 'refresh': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>;
+                case 'filter': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
                 default: return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
             }
         };
@@ -75,6 +76,8 @@
             "THS - Técnico em Segurança do Trabalho",
             "Profissionalizantes"
         ];
+
+        const TEC_GROUP = ["Técnico", "THE - Técnico em Enfermagem", "THP - Técnico em Podologia", "THR - Técnico em Radiologia", "THS - Técnico em Segurança do Trabalho"];
 
         const MONTHS_LIST = [
             { id: "2026-01", name: "Janeiro 2026" },
@@ -101,6 +104,7 @@
             const [activeTab, setActiveTab] = useState("overview");
             const [selectedProduct, setSelectedProduct] = useState("Pós-Graduação");
             const [selectedTool, setSelectedTool] = useState("Todas");
+            const [pacingFilter, setPacingFilter] = useState("Todos");
 
             const [newCampName, setNewCampName] = useState("");
             const [newCampProduct, setNewCampProduct] = useState(selectedProduct);
@@ -120,10 +124,10 @@
                     "Pós-Médica": 30000,
                     "Pós-Injetáveis": 30000,
                     "Técnico": 40000,
-                    "THE - Técnico em Enfermagem": 20000,
-                    "THP - Técnico em Podologia": 15000,
-                    "THR - Técnico em Radiologia": 15000,
-                    "THS - Técnico em Segurança do Trabalho": 15000,
+                    "THE - Técnico em Enfermagem": 40000,
+                    "THP - Técnico em Podologia": 40000,
+                    "THR - Técnico em Radiologia": 40000,
+                    "THS - Técnico em Segurança do Trabalho": 40000,
                     "Profissionalizantes": 20000
                 }
             });
@@ -135,10 +139,10 @@
                     "Pós-Médica": { inscritos: 600, matriculados: 120 },
                     "Pós-Injetáveis": { inscritos: 600, matriculados: 120 },
                     "Técnico": { inscritos: 1000, matriculados: 200 },
-                    "THE - Técnico em Enfermagem": { inscritos: 500, matriculados: 100 },
-                    "THP - Técnico em Podologia": { inscritos: 400, matriculados: 80 },
-                    "THR - Técnico em Radiologia": { inscritos: 400, matriculados: 80 },
-                    "THS - Técnico em Segurança do Trabalho": { inscritos: 400, matriculados: 80 },
+                    "THE - Técnico em Enfermagem": { inscritos: 1000, matriculados: 200 },
+                    "THP - Técnico em Podologia": { inscritos: 1000, matriculados: 200 },
+                    "THR - Técnico em Radiologia": { inscritos: 1000, matriculados: 200 },
+                    "THS - Técnico em Segurança do Trabalho": { inscritos: 1000, matriculados: 200 },
                     "Profissionalizantes": { inscritos: 600, matriculados: 120 }
                 }
             });
@@ -167,10 +171,13 @@
 
                 for (let i = 1; i <= totalDays; i++) {
                     const d = new Date(year, month - 1, i);
+                    const weekNum = Math.ceil(i / 7);
                     days.push({
                         dateNum: i,
                         dateStr: `${String(i).padStart(2, '0')}/${String(month).padStart(2, '0')}`,
                         weekday: weekdays[d.getDay()],
+                        weekNum: `Semana ${weekNum}`,
+                        isWeekend: d.getDay() === 0 || d.getDay() === 6,
                         isPast: d < new Date(now.getFullYear(), now.getMonth(), now.getDate()),
                         isToday: d.toDateString() === now.toDateString()
                     });
@@ -188,14 +195,14 @@
                         if (data.budgetsByMonth) setBudgetsByMonth(prev => ({ ...prev, ...data.budgetsByMonth }));
                         if (data.goalsByMonth) setGoalsByMonth(prev => ({ ...prev, ...data.goalsByMonth }));
                         if (data.campaigns) setCampaigns(data.campaigns);
-                        setSyncStatus("Sincronizado com a nuvem");
+                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
                     } else {
                         docRef.set({ budgetsByMonth, goalsByMonth, campaigns });
-                        setSyncStatus("Sincronizado com a nuvem");
+                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
                     }
                 }, (error) => {
                     console.error("Erro ao sincronizar:", error);
-                    setSyncStatus("Modo local (Offline)");
+                    setSyncStatus("Modo local (Offline - Protegido)");
                 });
 
                 return () => unsubscribe();
@@ -212,8 +219,8 @@
                         budgetsByMonth: newBudgets,
                         goalsByMonth: newGoals,
                         campaigns: newCampaigns
-                    }).then(() => {
-                        setSyncStatus("Sincronizado com a nuvem");
+                    }, { merge: true }).then(() => {
+                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
                     }).catch(() => {
                         setSyncStatus("Erro ao guardar");
                     });
@@ -252,16 +259,27 @@
                 let totalSpent = 0;
                 let googleSpent = 0;
                 let metaSpent = 0;
+                let totalInscritos = 0;
+                let totalMatriculados = 0;
+                let totalInscritosGoal = 0;
+                let totalMatriculadosGoal = 0;
 
                 PRODUCTS.forEach(p => {
                     totalBudget += Number(currentMonthBudgets[p]) || 0;
+                    const g = (goalsByMonth[selectedMonth] && goalsByMonth[selectedMonth][p]) || {};
+                    totalInscritosGoal += Number(g.inscritos) || 0;
+                    totalMatriculadosGoal += Number(g.matriculados) || 0;
                 });
 
                 campaigns.forEach(c => {
                     if (c.status === "Ativa" && c.dailyData && c.dailyData[selectedMonth]) {
                         Object.values(c.dailyData[selectedMonth]).forEach(d => {
                             const val = Number(d.realized) || 0;
+                            const ins = Number(d.inscritos) || 0;
+                            const mat = Number(d.matriculados) || 0;
                             totalSpent += val;
+                            totalInscritos += ins;
+                            totalMatriculados += mat;
                             if (c.tool === "Google Ads") googleSpent += val;
                             if (c.tool === "Meta Ads") metaSpent += val;
                         });
@@ -272,9 +290,13 @@
                 const totalBalance = totalBudget - totalSpent;
                 const googlePct = totalSpent > 0 ? Math.round((googleSpent / totalSpent) * 100) : 0;
                 const metaPct = totalSpent > 0 ? Math.round((metaSpent / totalSpent) * 100) : 0;
+                const inscritosPct = totalInscritosGoal > 0 ? Math.round((totalInscritos / totalInscritosGoal) * 100) : 0;
+                const matriculadosPct = totalMatriculadosGoal > 0 ? Math.round((totalMatriculados / totalMatriculadosGoal) * 100) : 0;
+                const avgCpi = totalInscritos > 0 ? totalSpent / totalInscritos : 0;
+                const avgCpa = totalMatriculados > 0 ? totalSpent / totalMatriculados : 0;
 
-                return { totalBudget, totalSpent, totalPct, totalBalance, googleSpent, metaSpent, googlePct, metaPct };
-            }, [currentMonthBudgets, campaigns, selectedMonth]);
+                return { totalBudget, totalSpent, totalPct, totalBalance, googleSpent, metaSpent, googlePct, metaPct, totalInscritos, totalMatriculados, totalInscritosGoal, totalMatriculadosGoal, inscritosPct, matriculadosPct, avgCpi, avgCpa };
+            }, [currentMonthBudgets, goalsByMonth, campaigns, selectedMonth]);
 
             const pacingRows = useMemo(() => {
                 const prodBudget = currentMonthBudgets[selectedProduct] || 0;
@@ -282,8 +304,7 @@
                 
                 let dayWeights = daysInMonth.map(day => {
                     if (pacingStrategy === "Ponderada (FDS x Úteis)") {
-                        const isWeekend = day.weekday === 'Sáb' || day.weekday === 'Dom';
-                        return isWeekend ? (Number(weekendWeight) || 0.4) : 1.0;
+                        return day.isWeekend ? (Number(weekendWeight) || 0.4) : 1.0;
                     }
                     return 1.0;
                 });
@@ -353,14 +374,23 @@
                 });
             }, [selectedProduct, currentMonthBudgets, daysInMonth, campaigns, selectedMonth, selectedTool, pacingStrategy, weekendWeight]);
 
+            const filteredPacingRows = useMemo(() => {
+                return pacingRows.filter(row => {
+                    if (pacingFilter === "Todos") return true;
+                    if (pacingFilter.startsWith("Semana")) return row.weekNum === pacingFilter;
+                    if (pacingFilter === "Dias Úteis") return !row.isWeekend;
+                    if (pacingFilter === "Fins de Semana") return row.isWeekend;
+                    return true;
+                });
+            }, [pacingRows, pacingFilter]);
+
             const handleGeneratePacing = () => {
                 const prodBudget = currentMonthBudgets[selectedProduct] || 0;
                 const totalDays = daysInMonth.length;
                 
                 let dayWeights = daysInMonth.map(day => {
                     if (pacingStrategy === "Ponderada (FDS x Úteis)") {
-                        const isWeekend = day.weekday === 'Sáb' || day.weekday === 'Dom';
-                        return isWeekend ? (Number(weekendWeight) || 0.4) : 1.0;
+                        return day.isWeekend ? (Number(weekendWeight) || 0.4) : 1.0;
                     }
                     return 1.0;
                 });
@@ -397,6 +427,29 @@
                 alert("Pacing gerado/resetado com sucesso para " + selectedProduct + "!");
             };
 
+            const updateBudgetAndGoalsForProduct = (prodName, newBudget, newInscritos, newMatriculados) => {
+                let targetProds = [prodName];
+                if (TEC_GROUP.includes(prodName)) {
+                    targetProds = TEC_GROUP;
+                }
+
+                const updatedBudgets = { ...budgetsByMonth };
+                if (!updatedBudgets[selectedMonth]) updatedBudgets[selectedMonth] = {};
+
+                const updatedGoals = { ...goalsByMonth };
+                if (!updatedGoals[selectedMonth]) updatedGoals[selectedMonth] = {};
+
+                targetProds.forEach(p => {
+                    updatedBudgets[selectedMonth][p] = Number(newBudget);
+                    updatedGoals[selectedMonth][p] = {
+                        inscritos: Number(newInscritos),
+                        matriculados: Number(newMatriculados)
+                    };
+                });
+
+                saveDataToCloud(updatedBudgets, updatedGoals, campaigns);
+            };
+
             const currentKPIs = useMemo(() => {
                 const budget = currentMonthBudgets[selectedProduct] || 0;
                 const totalRealized = pacingRows.reduce((acc, r) => acc + r.realized, 0);
@@ -411,6 +464,9 @@
 
                 const cpi = totalInscritos > 0 ? totalRealized / totalInscritos : 0;
                 const cpa = totalMatriculados > 0 ? totalRealized / totalMatriculados : 0;
+
+                const targetCpi = inscritosGoal > 0 ? budget / inscritosGoal : 0;
+                const targetCpa = matriculadosGoal > 0 ? budget / matriculadosGoal : 0;
 
                 const balance = budget - totalRealized;
                 const pastDays = pacingRows.filter(r => r.isPast);
@@ -430,28 +486,48 @@
                     matriculadosPct,
                     cpi,
                     cpa,
+                    targetCpi,
+                    targetCpa,
                     lastDayRealized: lastPast?.realized || 0,
                     lastDayStatus: lastPast?.status || "Normal",
                     suggestedPacing
                 };
             }, [selectedProduct, currentMonthBudgets, currentMonthGoals, pacingRows]);
 
-            const getMonthSpentTotal = (monthKey) => {
-                if (!budgetsByMonth[monthKey]) return 0;
-                let total = 0;
+            const getMonthStatsForComparison = (monthKey) => {
+                let mBudget = 0;
+                let mSpent = 0;
+                let mInscritos = 0;
+                let mMatriculados = 0;
+                let mInscritosGoal = 0;
+                let mMatriculadosGoal = 0;
+
+                const mBudgets = budgetsByMonth[monthKey] || {};
+                const mGoals = goalsByMonth[monthKey] || {};
+
+                PRODUCTS.forEach(p => {
+                    mBudget += Number(mBudgets[p]) || 0;
+                    const g = mGoals[p] || {};
+                    mInscritosGoal += Number(g.inscritos) || 0;
+                    mMatriculadosGoal += Number(g.matriculados) || 0;
+                });
+
                 campaigns.forEach(c => {
                     if (c.dailyData && c.dailyData[monthKey]) {
                         Object.values(c.dailyData[monthKey]).forEach(d => {
-                            total += Number(d.realized) || 0;
+                            mSpent += Number(d.realized) || 0;
+                            mInscritos += Number(d.inscritos) || 0;
+                            mMatriculados += Number(d.matriculados) || 0;
                         });
                     }
                 });
-                return total;
-            };
 
-            const getMonthBudgetTotal = (monthKey) => {
-                const mBudgets = budgetsByMonth[monthKey] || {};
-                return PRODUCTS.reduce((acc, p) => acc + (Number(mBudgets[p]) || 0), 0);
+                const cpi = mInscritos > 0 ? mSpent / mInscritos : 0;
+                const cpa = mMatriculados > 0 ? mSpent / mMatriculados : 0;
+                const targetCpi = mInscritosGoal > 0 ? mBudget / mInscritosGoal : 0;
+                const targetCpa = mMatriculadosGoal > 0 ? mBudget / mMatriculadosGoal : 0;
+
+                return { mBudget, mSpent, mInscritos, mMatriculados, mInscritosGoal, mMatriculadosGoal, cpi, cpa, targetCpi, targetCpa };
             };
 
             const handleExportCSV = () => {
@@ -464,15 +540,21 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `backup_orcamentos_${new Date().toISOString().slice(0,10)}.csv`;
+                a.download = `backup_protegido_orcamentos_${new Date().toISOString().slice(0,10)}.csv`;
                 a.click();
             };
 
             const handleOpenAI = () => {
                 setIsAiModalOpen(true);
-                setAiText("A analisar métricas de performance e pacing com Inteligência Artificial...");
+                setAiText("A analisar métricas de performance, pacing e projeção de fim de mês com Inteligência Artificial...");
                 setTimeout(() => {
-                    setAiText(`📊 Relatório de IA (${selectedProduct} - ${selectedMonth}):\n\nO orçamento de ${formatBRL(currentKPIs.budget)} tem consumo de ${formatBRL(currentKPIs.totalRealized)} (${formatBRL(currentKPIs.balance)} restantes).\n\nMetas e Conversão:\n- Inscritos: ${formatNum(currentKPIs.totalInscritos)} / ${formatNum(currentKPIs.inscritosGoal)} (${currentKPIs.inscritosPct}%) - CPI atual: ${formatBRL(currentKPIs.cpi)}\n- Matriculados: ${formatNum(currentKPIs.totalMatriculados)} / ${formatNum(currentKPIs.matriculadosGoal)} (${currentKPIs.matriculadosPct}%) - CPA atual: ${formatBRL(currentKPIs.cpa)}\n\nRecomendação: O pacing sugerido é de ${formatBRL(currentKPIs.suggestedPacing)}/dia. Monitore o CPI e CPA para garantir eficiência.`);
+                    const pastDays = pacingRows.filter(r => r.isPast).length || 1;
+                    const totalDays = pacingRows.length || 30;
+                    const runRateSpent = (currentKPIs.totalRealized / pastDays) * totalDays;
+                    const runRateIns = (currentKPIs.totalInscritos / pastDays) * totalDays;
+                    const runRateMat = (currentKPIs.totalMatriculados / pastDays) * totalDays;
+
+                    setAiText(`🤖 Projeção Inteligente de Fechamento de Mês (${selectedProduct} - ${selectedMonth}):\n\n- Orçamento Disponível: ${formatBRL(currentKPIs.budget)}\n- Consumo Projetado (Run-Rate): ${formatBRL(runRateSpent)}\n- Inscritos Projetados: ${formatNum(runRateIns)} (Meta: ${formatNum(currentKPIs.inscritosGoal)})\n- Matriculados Projetados: ${formatNum(runRateMat)} (Meta: ${formatNum(currentKPIs.matriculadosGoal)})\n- CPI Projetado: ${formatBRL(runRateIns > 0 ? runRateSpent / runRateIns : 0)} (Meta: ${formatBRL(currentKPIs.targetCpi)})\n- CPA Projetado: ${formatBRL(runRateMat > 0 ? runRateSpent / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpa)})\n\nRecomendação da IA: O ritmo atual indica ${runRateSpent > currentKPIs.budget ? 'estouro de orçamento projetado' : 'bom controle orçamentário'}. Ajuste o pacing diário para ${formatBRL(currentKPIs.suggestedPacing)} para atingir as metas de conversão.`);
                 }, 1000);
             };
 
@@ -507,7 +589,7 @@
                                 {syncStatus}
                             </span>
                             <button onClick={handleOpenAI} className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition">
-                                <Icon name="sparkles" className="w-4 h-4" /> Resumo IA
+                                <Icon name="sparkles" className="w-4 h-4" /> Projeção IA
                             </button>
                             <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition">
                                 <Icon name="share" className="w-4 h-4" /> Partilhar
@@ -518,13 +600,13 @@
                     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-4">
                         <div>
                             <h2 className="text-xl font-bold text-slate-900">
-                                Painel de Controle Consolidado
+                                Painel de Controle Consolidado & Proteção de Dados
                             </h2>
-                            <p className="text-slate-500 text-sm mt-0.5">Controle de BAU, Campanhas (Google & Meta Ads) e Pacing Diário</p>
+                            <p className="text-slate-500 text-sm mt-0.5">Controle de BAU, Campanhas, Metas de Conversão (CPI/CPA) e Pacing Diário</p>
                         </div>
                         <div className="flex gap-2">
                             <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 shadow-sm transition">
-                                <Icon name="download" className="w-4 h-4" /> Exportar Backup CSV
+                                <Icon name="download" className="w-4 h-4" /> Backup CSV Protegido
                             </button>
                         </div>
                     </header>
@@ -535,7 +617,7 @@
                             onClick={() => setActiveTab("overview")}
                             className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "overview" ? 'bg-unicesumar text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                         >
-                            📊 Visão Geral (Executiva)
+                            📊 Visão Geral & Gráficos
                         </button>
                         {PRODUCTS.map(prod => (
                             <button
@@ -550,7 +632,7 @@
                             onClick={() => setActiveTab("comparison")}
                             className={`px-4 py-2 rounded-lg text-sm font-semibold transition ml-auto flex items-center gap-1.5 ${activeTab === "comparison" ? 'bg-emerald-700 text-white shadow' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'}`}
                         >
-                            <Icon name="git-compare" className="w-4 h-4 text-emerald-700" /> Comparativo Meses
+                            <Icon name="git-compare" className="w-4 h-4 text-emerald-700" /> Comparativo Meses & Metas
                         </button>
                     </div>
 
@@ -570,7 +652,7 @@
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setActiveTab("pacing")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'pacing' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`}>
-                                    📅 Pacing Diário & Metas
+                                    📅 Pacing & Metas (CPI/CPA)
                                 </button>
                                 <button onClick={() => setActiveTab("campaigns")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'campaigns' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`}>
                                     🚀 Campanhas
@@ -582,14 +664,14 @@
                         </div>
                     )}
 
-                    {/* VISÃO GERAL */}
+                    {/* VISÃO GERAL COM GRÁFICOS */}
                     {activeTab === "overview" && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                                     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Orçamento Total Global</span>
                                     <p className="text-2xl font-bold text-slate-900 mt-2">{formatBRL(overviewGlobalStats.totalBudget)}</p>
-                                    <p className="text-xs text-slate-500 mt-1">Soma de todos os produtos do mês</p>
+                                    <p className="text-xs text-slate-500 mt-1">Soma de todos os produtos</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                                     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Consumo Realizado Total</span>
@@ -602,92 +684,86 @@
                                     </div>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Global Restante</span>
-                                    <p className="text-2xl font-bold text-emerald-600 mt-2">{formatBRL(overviewGlobalStats.totalBalance)}</p>
-                                    <p className="text-xs text-slate-500 mt-1">Disponível para o restante do período</p>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Inscritos Globais (Real/Meta)</span>
+                                    <p className="text-2xl font-bold text-slate-900 mt-2">{formatNum(overviewGlobalStats.totalInscritos)} <span className="text-xs text-slate-400 font-normal">/ {formatNum(overviewGlobalStats.totalInscritosGoal)}</span></p>
+                                    <p className="text-xs text-blue-600 font-semibold mt-1">Atingimento: {overviewGlobalStats.inscritosPct}% (CPI: {formatBRL(overviewGlobalStats.avgCpi)})</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Share por Canal (Mídia)</span>
-                                    <div className="flex justify-between items-center mt-3 text-xs">
-                                        <span className="font-semibold text-amber-800 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">Google: {overviewGlobalStats.googlePct}%</span>
-                                        <span className="font-semibold text-blue-800 bg-blue-50 px-2.5 py-1 rounded border border-blue-200">Meta: {overviewGlobalStats.metaPct}%</span>
-                                    </div>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Matriculados Globais (Real/Meta)</span>
+                                    <p className="text-2xl font-bold text-slate-900 mt-2">{formatNum(overviewGlobalStats.totalMatriculados)} <span className="text-xs text-slate-400 font-normal">/ {formatNum(overviewGlobalStats.totalMatriculadosGoal)}</span></p>
+                                    <p className="text-xs text-emerald-600 font-semibold mt-1">Atingimento: {overviewGlobalStats.matriculadosPct}% (CPA: {formatBRL(overviewGlobalStats.avgCpa)})</p>
                                 </div>
                             </div>
 
-                            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                                <div className="flex justify-between items-center mb-6">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
-                                            <div className="p-2 bg-blue-50 rounded-xl text-blue-700">
-                                                <Icon name="pie-chart" className="w-5 h-5" />
-                                            </div>
-                                            Distribuição de Orçamento vs. Consumo por Produto
-                                        </h3>
-                                        <p className="text-xs text-slate-500 mt-0.5">Acompanhamento consolidado de todas as verticais em {selectedMonth}</p>
+                            {/* GRÁFICOS VISUAIS NO RESUMO EXECUTIVO */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                        <Icon name="pie-chart" className="text-blue-700" /> Gráfico: Consumo vs Orçamento por Produto
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {PRODUCTS.map(prod => {
+                                            const b = currentMonthBudgets[prod] || 0;
+                                            const spent = totalSpentByProduct[prod] || 0;
+                                            const pct = b > 0 ? Math.min(Math.round((spent / b) * 100), 100) : 0;
+                                            return (
+                                                <div key={prod} className="text-xs">
+                                                    <div className="flex justify-between font-semibold text-slate-700 mb-1">
+                                                        <span>{prod}</span>
+                                                        <span>{formatBRL(spent)} / {formatBRL(b)} ({pct}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                        <div className={`h-full rounded-full ${pct > 100 ? 'bg-red-500' : 'bg-blue-600'}`} style={{ width: `${pct}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm text-slate-700">
-                                        <thead className="bg-slate-100 text-slate-600 uppercase text-xs border-b border-slate-200">
-                                            <tr>
-                                                <th className="px-4 py-3">Produto / Categoria</th>
-                                                <th className="px-4 py-3">Orçamento BAU</th>
-                                                <th className="px-4 py-3">Realizado (Auto)</th>
-                                                <th className="px-4 py-3">Saldo</th>
-                                                <th className="px-4 py-3">Progresso de Consumo</th>
-                                                <th className="px-4 py-3 text-right">Ação</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-200">
-                                            {PRODUCTS.map(prod => {
-                                                const b = currentMonthBudgets[prod] || 0;
-                                                const spent = totalSpentByProduct[prod] || 0;
-                                                const balance = b - spent;
-                                                const pct = b > 0 ? Math.min(Math.round((spent / b) * 100), 100) : 0;
-                                                const isOver = spent > b;
-
-                                                return (
-                                                    <tr key={prod} className="hover:bg-slate-50 transition">
-                                                        <td className="px-4 py-3 font-semibold text-slate-900">{prod}</td>
-                                                        <td className="px-4 py-3">{formatBRL(b)}</td>
-                                                        <td className="px-4 py-3 font-semibold text-blue-700">{formatBRL(spent)}</td>
-                                                        <td className={`px-4 py-3 font-medium ${balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatBRL(balance)}</td>
-                                                        <td className="px-4 py-3 w-1/4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                                                                    <div className={`h-full rounded-full ${isOver ? 'bg-red-500' : 'bg-blue-600'}`} style={{ width: `${pct}%` }}></div>
-                                                                </div>
-                                                                <span className={`text-xs font-bold ${isOver ? 'text-red-600' : 'text-slate-600'}`}>{pct}%</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right">
-                                                            <button 
-                                                                onClick={() => { setSelectedProduct(prod); setActiveTab("pacing"); }}
-                                                                className="bg-blue-50 hover:bg-blue-100 text-blue-800 px-3 py-1 rounded-lg text-xs font-semibold transition"
-                                                            >
-                                                                Gerenciar Pacing
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                        <Icon name="trending" className="text-emerald-700" /> Gráfico: Atingimento de Metas (Matriculados)
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {PRODUCTS.map(prod => {
+                                            const goalObj = (goalsByMonth[selectedMonth] && goalsByMonth[selectedMonth][prod]) || { matriculados: 0 };
+                                            const goalMat = goalObj.matriculados || 1;
+                                            let realMat = 0;
+                                            campaigns.filter(c => c.product === prod && c.status === "Ativa").forEach(c => {
+                                                if (c.dailyData && c.dailyData[selectedMonth]) {
+                                                    Object.values(c.dailyData[selectedMonth]).forEach(d => {
+                                                        realMat += Number(d.matriculados) || 0;
+                                                    });
+                                                }
+                                            });
+                                            const pctMat = Math.min(Math.round((realMat / goalMat) * 100), 100);
+                                            return (
+                                                <div key={prod} className="text-xs">
+                                                    <div className="flex justify-between font-semibold text-slate-700 mb-1">
+                                                        <span>{prod}</span>
+                                                        <span>{formatNum(realMat)} / {formatNum(goalMat)} mat. ({pctMat}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pctMat}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* COMPARATIVO */}
+                    {/* COMPARATIVO DE MESES & METAS */}
                     {activeTab === "comparison" && (
                         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
                             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
                                 <div className="p-2 bg-emerald-50 rounded-xl text-emerald-700">
                                     <Icon name="git-compare" className="w-5 h-5" />
                                 </div>
-                                Comparativo de Desempenho entre Meses
+                                Comparativo Avançado entre Meses (Orçamento, Metas, CPI & CPA)
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
                                 <div>
@@ -704,56 +780,82 @@
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-xs font-semibold text-slate-500 uppercase">Orçamento Total BAU</h3>
-                                    <div className="flex justify-between items-baseline mt-3">
-                                        <div>
-                                            <p className="text-xs text-slate-400">Mês A</p>
-                                            <p className="text-lg font-bold text-slate-900">{formatBRL(getMonthBudgetTotal(compareMonthA))}</p>
+                            {(() => {
+                                const statsA = getMonthStatsForComparison(compareMonthA);
+                                const statsB = getMonthStatsForComparison(compareMonthB);
+                                return (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
+                                            <h3 className="text-xs font-semibold text-slate-500 uppercase">Orçamento & Gasto</h3>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">Orçamento A:</span>
+                                                <span className="font-bold">{formatBRL(statsA.mBudget)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">Orçamento B:</span>
+                                                <span className="font-bold text-blue-700">{formatBRL(statsB.mBudget)}</span>
+                                            </div>
+                                            <hr className="border-slate-200"/>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">Realizado A:</span>
+                                                <span className="font-bold">{formatBRL(statsA.mSpent)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">Realizado B:</span>
+                                                <span className="font-bold text-blue-700">{formatBRL(statsB.mSpent)}</span>
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-slate-400">Mês B</p>
-                                            <p className="text-lg font-bold text-blue-700">{formatBRL(getMonthBudgetTotal(compareMonthB))}</p>
+
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
+                                            <h3 className="text-xs font-semibold text-slate-500 uppercase">Inscritos & CPI</h3>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">Inscritos (Real/Meta) A:</span>
+                                                <span className="font-bold">{formatNum(statsA.mInscritos)} / {formatNum(statsA.mInscritosGoal)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">Inscritos (Real/Meta) B:</span>
+                                                <span className="font-bold text-blue-700">{formatNum(statsB.mInscritos)} / {formatNum(statsB.mInscritosGoal)}</span>
+                                            </div>
+                                            <hr className="border-slate-200"/>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">CPI Real A (Meta):</span>
+                                                <span className="font-bold">{formatBRL(statsA.cpi)} ({formatBRL(statsA.targetCpi)})</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">CPI Real B (Meta):</span>
+                                                <span className="font-bold text-amber-700">{formatBRL(statsB.cpi)} ({formatBRL(statsB.targetCpi)})</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
+                                            <h3 className="text-xs font-semibold text-slate-500 uppercase">Matriculados & CPA</h3>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">Matriculados (Real/Meta) A:</span>
+                                                <span className="font-bold">{formatNum(statsA.mMatriculados)} / {formatNum(statsA.mMatriculadosGoal)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">Matriculados (Real/Meta) B:</span>
+                                                <span className="font-bold text-blue-700">{formatNum(statsB.mMatriculados)} / {formatNum(statsB.mMatriculadosGoal)}</span>
+                                            </div>
+                                            <hr className="border-slate-200"/>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">CPA Real A (Meta):</span>
+                                                <span className="font-bold">{formatBRL(statsA.cpa)} ({formatBRL(statsA.targetCpa)})</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-slate-500">CPA Real B (Meta):</span>
+                                                <span className="font-bold text-purple-700">{formatBRL(statsB.cpa)} ({formatBRL(statsB.targetCpa)})</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-xs font-semibold text-slate-500 uppercase">Consumo Realizado Total</h3>
-                                    <div className="flex justify-between items-baseline mt-3">
-                                        <div>
-                                            <p className="text-xs text-slate-400">Mês A</p>
-                                            <p className="text-lg font-bold text-slate-900">{formatBRL(getMonthSpentTotal(compareMonthA))}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xs text-slate-400">Mês B</p>
-                                            <p className="text-lg font-bold text-emerald-600">{formatBRL(getMonthSpentTotal(compareMonthB))}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-xs font-semibold text-slate-500 uppercase">Variação de Investimento</h3>
-                                    <div className="mt-3">
-                                        {(() => {
-                                            const totalA = getMonthSpentTotal(compareMonthA);
-                                            const totalB = getMonthSpentTotal(compareMonthB);
-                                            const diff = totalB - totalA;
-                                            const pct = totalA > 0 ? ((diff / totalA) * 100).toFixed(1) : 0;
-                                            return (
-                                                <p className={`text-xl font-bold ${diff >= 0 ? 'text-emerald-600' : 'text-blue-700'}`}>
-                                                    {diff >= 0 ? `+${formatBRL(diff)} (+${pct}%)` : `${formatBRL(diff)} (${pct}%)`}
-                                                </p>
-                                            );
-                                        })()}
-                                    </div>
-                                </div>
-                            </div>
+                                );
+                            })()}
                         </div>
                     )}
 
                     {activeTab === "pacing" && (
                         <div className="space-y-6">
-                            {/* CONTROLES DE ESTRATÉGIA DE PACING */}
+                            {/* CONTROLES DE ESTRATÉGIA DE PACING E FILTROS */}
                             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex flex-wrap items-center gap-4">
                                     <div>
@@ -781,74 +883,70 @@
                                             />
                                         </div>
                                     )}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Filtrar Período</label>
+                                        <select 
+                                            value={pacingFilter} 
+                                            onChange={(e) => setPacingFilter(e.target.value)}
+                                            className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold text-sm focus:outline-none focus:border-blue-700"
+                                        >
+                                            <option value="Todos">Todos os Dias</option>
+                                            <option value="Semana 1">Semana 1</option>
+                                            <option value="Semana 2">Semana 2</option>
+                                            <option value="Semana 3">Semana 3</option>
+                                            <option value="Semana 4">Semana 4</option>
+                                            <option value="Dias Úteis">Apenas Dias Úteis</option>
+                                            <option value="Fins de Semana">Apenas Fim de Semana</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <button 
                                     onClick={handleGeneratePacing}
                                     className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition"
                                 >
-                                    <Icon name="refresh" className="w-4 h-4" /> Gerenciar/Resetar Pacing
+                                    <Icon name="refresh" className="w-4 h-4" /> Gerar/Resetar Pacing
                                 </button>
                             </div>
 
-                            {/* CONFIGURAÇÃO DE ORÇAMENTO E METAS DO PRODUTO */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <label className="text-xs font-semibold text-slate-500 uppercase">Orçamento BAU ({selectedProduct})</label>
-                                    <input 
-                                        type="number" 
-                                        value={currentMonthBudgets[selectedProduct] || 0} 
-                                        onChange={(e) => {
-                                            const newBudgets = { 
-                                                ...budgetsByMonth, 
-                                                [selectedMonth]: { 
-                                                    ...currentMonthBudgets, 
-                                                    [selectedProduct]: Number(e.target.value) 
-                                                } 
-                                            };
-                                            saveDataToCloud(newBudgets, goalsByMonth, campaigns);
-                                        }}
-                                        className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700"
-                                    />
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <label className="text-xs font-semibold text-slate-500 uppercase">Meta de Inscritos</label>
-                                    <input 
-                                        type="number" 
-                                        value={currentMonthGoals.inscritos || 0} 
-                                        onChange={(e) => {
-                                            const newGoals = { 
-                                                ...goalsByMonth, 
-                                                [selectedMonth]: { 
-                                                    ...(goalsByMonth[selectedMonth] || {}), 
-                                                    [selectedProduct]: { ...currentMonthGoals, inscritos: Number(e.target.value) } 
-                                                } 
-                                            };
-                                            saveDataToCloud(budgetsByMonth, newGoals, campaigns);
-                                        }}
-                                        className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700"
-                                    />
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <label className="text-xs font-semibold text-slate-500 uppercase">Meta de Matriculados</label>
-                                    <input 
-                                        type="number" 
-                                        value={currentMonthGoals.matriculados || 0} 
-                                        onChange={(e) => {
-                                            const newGoals = { 
-                                                ...goalsByMonth, 
-                                                [selectedMonth]: { 
-                                                    ...(goalsByMonth[selectedMonth] || {}), 
-                                                    [selectedProduct]: { ...currentMonthGoals, matriculados: Number(e.target.value) } 
-                                                } 
-                                            };
-                                            saveDataToCloud(budgetsByMonth, newGoals, campaigns);
-                                        }}
-                                        className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700"
-                                    />
+                            {/* CONFIGURAÇÃO DE ORÇAMENTO E METAS DO PRODUTO (COM SINCRONIZAÇÃO TÉCNICOS/SAÚDE) */}
+                            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+                                {TEC_GROUP.includes(selectedProduct) && (
+                                    <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-lg flex items-center gap-2">
+                                        <span className="font-bold">Nota:</span> Os produtos técnicos e de saúde (Técnico, THE, THP, THR, THS) compartilham a mesma verba e metas de inscrições/matrículas, mas mantêm campanhas separadas.
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="text-xs font-semibold text-slate-500 uppercase">Orçamento BAU ({selectedProduct})</label>
+                                        <input 
+                                            type="number" 
+                                            value={currentMonthBudgets[selectedProduct] || 0} 
+                                            onChange={(e) => updateBudgetAndGoalsForProduct(selectedProduct, e.target.value, currentMonthGoals.inscritos, currentMonthGoals.matriculados)}
+                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-semibold text-slate-500 uppercase">Meta de Inscritos</label>
+                                        <input 
+                                            type="number" 
+                                            value={currentMonthGoals.inscritos || 0} 
+                                            onChange={(e) => updateBudgetAndGoalsForProduct(selectedProduct, currentMonthBudgets[selectedProduct] || 0, e.target.value, currentMonthGoals.matriculados)}
+                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-semibold text-slate-500 uppercase">Meta de Matriculados</label>
+                                        <input 
+                                            type="number" 
+                                            value={currentMonthGoals.matriculados || 0} 
+                                            onChange={(e) => updateBudgetAndGoalsForProduct(selectedProduct, currentMonthBudgets[selectedProduct] || 0, currentMonthGoals.inscritos, e.target.value)}
+                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* KPI CARDS DE GASTO E CONVERSÃO */}
+                            {/* KPI CARDS DE GASTO, CONVERSÃO, CPI E CPA */}
                             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                     <span className="text-[11px] font-semibold text-slate-500 uppercase">Consumo Realizado</span>
@@ -869,16 +967,16 @@
                                     <span className="text-xs font-semibold text-emerald-600">{currentKPIs.matriculadosPct}% atingido</span>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPI (Custo / Inscrito)</span>
-                                    <p className="text-lg font-bold text-amber-700 mt-1">{formatBRL(currentKPIs.cpi)}</p>
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPI (Real / Meta)</span>
+                                    <p className="text-lg font-bold text-amber-700 mt-1">{formatBRL(currentKPIs.cpi)} <span className="text-[10px] font-normal text-slate-400">({formatBRL(currentKPIs.targetCpi)})</span></p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPA (Custo / Matriculado)</span>
-                                    <p className="text-lg font-bold text-purple-700 mt-1">{formatBRL(currentKPIs.cpa)}</p>
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPA (Real / Meta)</span>
+                                    <p className="text-lg font-bold text-purple-700 mt-1">{formatBRL(currentKPIs.cpa)} <span className="text-[10px] font-normal text-slate-400">({formatBRL(currentKPIs.targetCpa)})</span></p>
                                 </div>
                             </div>
 
-                            {/* TABELA DE PACING */}
+                            {/* TABELA DE PACING COM FILTROS */}
                             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm text-slate-700">
@@ -886,6 +984,7 @@
                                             <tr>
                                                 <th className="px-4 py-3">Data</th>
                                                 <th className="px-4 py-3">Dia</th>
+                                                <th className="px-4 py-3">Semana</th>
                                                 <th className="px-4 py-3">Meta Planejada (R$)</th>
                                                 <th className="px-4 py-3">Realizado (R$)</th>
                                                 <th className="px-4 py-3">Delta</th>
@@ -897,12 +996,13 @@
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-200">
-                                            {pacingRows.map((row) => {
+                                            {filteredPacingRows.map((row) => {
                                                 const isOver10 = row.realized > row.planned * 1.1;
                                                 return (
                                                     <tr key={row.dateStr} className={`hover:bg-slate-50 ${isOver10 ? 'bg-red-50/50' : ''} ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
                                                         <td className="px-4 py-3 text-slate-900">{row.dateStr}</td>
                                                         <td className="px-4 py-3 text-slate-500">{row.weekday}</td>
+                                                        <td className="px-4 py-3 text-slate-400 text-xs">{row.weekNum}</td>
                                                         <td className="px-4 py-3">{formatBRL(row.planned)}</td>
                                                         <td className="px-4 py-3 font-semibold text-blue-700">{formatBRL(row.realized)}</td>
                                                         <td className={`px-4 py-3 font-medium ${row.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -1203,7 +1303,7 @@
                             <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-xl">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                        <Icon name="sparkles" className="text-purple-600" /> Analista de Mídia IA
+                                        <Icon name="sparkles" className="text-purple-600" /> Projeção IA & Ritmo de Mídia
                                     </h3>
                                     <button onClick={() => setIsAiModalOpen(false)} className="text-slate-400 hover:text-slate-700">✕</button>
                                 </div>
