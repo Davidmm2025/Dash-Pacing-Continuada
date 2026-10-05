@@ -59,7 +59,7 @@
                 case 'git-compare': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>;
                 case 'pie-chart': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
                 case 'refresh': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>;
-                case 'filter': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
+                case 'lock': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
                 default: return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
             }
         };
@@ -70,14 +70,8 @@
             "Pós-Médica",
             "Pós-Injetáveis",
             "Técnico",
-            "THE - Técnico em Enfermagem",
-            "THP - Técnico em Podologia",
-            "THR - Técnico em Radiologia",
-            "THS - Técnico em Segurança do Trabalho",
             "Profissionalizantes"
         ];
-
-        const TEC_GROUP = ["Técnico", "THE - Técnico em Enfermagem", "THP - Técnico em Podologia", "THR - Técnico em Radiologia", "THS - Técnico em Segurança do Trabalho"];
 
         const MONTHS_LIST = [
             { id: "2026-01", name: "Janeiro 2026" },
@@ -95,6 +89,15 @@
         ];
 
         function App() {
+            const [currentUser, setCurrentUser] = useState(() => {
+                const saved = sessionStorage.getItem("unicesumar_auth_user");
+                return saved ? JSON.parse(saved) : null;
+            });
+
+            const [loginUser, setLoginUser] = useState("");
+            const [loginPass, setLoginPass] = useState("");
+            const [loginError, setLoginError] = useState("");
+
             const currentMonthDefault = (() => {
                 const now = new Date();
                 return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -123,11 +126,7 @@
                     "Pós-Híbridas": 35000,
                     "Pós-Médica": 30000,
                     "Pós-Injetáveis": 30000,
-                    "Técnico": 40000,
-                    "THE - Técnico em Enfermagem": 40000,
-                    "THP - Técnico em Podologia": 40000,
-                    "THR - Técnico em Radiologia": 40000,
-                    "THS - Técnico em Segurança do Trabalho": 40000,
+                    "Técnico": 80000,
                     "Profissionalizantes": 20000
                 }
             });
@@ -138,11 +137,7 @@
                     "Pós-Híbridas": { inscritos: 900, matriculados: 180 },
                     "Pós-Médica": { inscritos: 600, matriculados: 120 },
                     "Pós-Injetáveis": { inscritos: 600, matriculados: 120 },
-                    "Técnico": { inscritos: 1000, matriculados: 200 },
-                    "THE - Técnico em Enfermagem": { inscritos: 1000, matriculados: 200 },
-                    "THP - Técnico em Podologia": { inscritos: 1000, matriculados: 200 },
-                    "THR - Técnico em Radiologia": { inscritos: 1000, matriculados: 200 },
-                    "THS - Técnico em Segurança do Trabalho": { inscritos: 1000, matriculados: 200 },
+                    "Técnico": { inscritos: 2000, matriculados: 400 },
                     "Profissionalizantes": { inscritos: 600, matriculados: 120 }
                 }
             });
@@ -161,6 +156,35 @@
 
             const [compareMonthA, setCompareMonthA] = useState(currentMonthDefault);
             const [compareMonthB, setCompareMonthB] = useState(currentMonthDefault);
+
+            const isReadOnly = currentUser?.role === 'readonly';
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                setLoginError("");
+                const u = loginUser.trim();
+                const p = loginPass;
+
+                let authObj = null;
+                if (u === "david.marconato" && p === "#David2026") {
+                    authObj = { name: "David Martins Marconato", role: "editor" };
+                } else if (u === "thais.mazzieiro" && p === "#Thais2026") {
+                    authObj = { name: "Thais Mazzieiro", role: "editor" };
+                } else if (u === "BU" && p === "#BUcontinuada") {
+                    authObj = { name: "BU (Somente Leitura)", role: "readonly" };
+                } else {
+                    setLoginError("Login ou senha incorretos.");
+                    return;
+                }
+
+                setCurrentUser(authObj);
+                sessionStorage.setItem("unicesumar_auth_user", JSON.stringify(authObj));
+            };
+
+            const handleLogout = () => {
+                setCurrentUser(null);
+                sessionStorage.removeItem("unicesumar_auth_user");
+            };
 
             const daysInMonth = useMemo(() => {
                 const [year, month] = selectedMonth.split('-').map(Number);
@@ -187,7 +211,7 @@
 
             useEffect(() => {
                 if (!window.db) return;
-                const docRef = window.db.collection("dash_data").doc("main_state_multi_month");
+                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v2");
                 
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
                     if (docSnap.exists) {
@@ -209,13 +233,14 @@
             }, []);
 
             const saveDataToCloud = (newBudgets, newGoals, newCampaigns) => {
+                if (isReadOnly) return;
                 setBudgetsByMonth(newBudgets);
                 setGoalsByMonth(newGoals);
                 setCampaigns(newCampaigns);
 
                 if (window.db) {
                     setSyncStatus("A guardar...");
-                    window.db.collection("dash_data").doc("main_state_multi_month").set({
+                    window.db.collection("dash_data").doc("main_state_multi_month_v2").set({
                         budgetsByMonth: newBudgets,
                         goalsByMonth: newGoals,
                         campaigns: newCampaigns
@@ -385,6 +410,7 @@
             }, [pacingRows, pacingFilter]);
 
             const handleGeneratePacing = () => {
+                if (isReadOnly) return;
                 const prodBudget = currentMonthBudgets[selectedProduct] || 0;
                 const totalDays = daysInMonth.length;
                 
@@ -428,24 +454,18 @@
             };
 
             const updateBudgetAndGoalsForProduct = (prodName, newBudget, newInscritos, newMatriculados) => {
-                let targetProds = [prodName];
-                if (TEC_GROUP.includes(prodName)) {
-                    targetProds = TEC_GROUP;
-                }
-
+                if (isReadOnly) return;
                 const updatedBudgets = { ...budgetsByMonth };
                 if (!updatedBudgets[selectedMonth]) updatedBudgets[selectedMonth] = {};
 
                 const updatedGoals = { ...goalsByMonth };
                 if (!updatedGoals[selectedMonth]) updatedGoals[selectedMonth] = {};
 
-                targetProds.forEach(p => {
-                    updatedBudgets[selectedMonth][p] = Number(newBudget);
-                    updatedGoals[selectedMonth][p] = {
-                        inscritos: Number(newInscritos),
-                        matriculados: Number(newMatriculados)
-                    };
-                });
+                updatedBudgets[selectedMonth][prodName] = Number(newBudget);
+                updatedGoals[selectedMonth][prodName] = {
+                    inscritos: Number(newInscritos),
+                    matriculados: Number(newMatriculados)
+                };
 
                 saveDataToCloud(updatedBudgets, updatedGoals, campaigns);
             };
@@ -558,12 +578,72 @@
                 }, 1000);
             };
 
+            // TELA DE LOGIN OBRIGATÓRIA
+            if (!currentUser) {
+                return (
+                    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl border border-slate-700">
+                            <div className="text-center mb-6">
+                                <div className="inline-flex p-3 bg-unicesumar text-white rounded-2xl shadow-md mb-3">
+                                    <Icon name="lock" className="w-8 h-8" />
+                                </div>
+                                <h1 className="text-2xl font-bold text-slate-900">UniCesumar</h1>
+                                <p className="text-xs text-slate-500 mt-1">Gestão de Mídia Performance & Pacing</p>
+                            </div>
+
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Usuário / Login</label>
+                                    <input 
+                                        type="text" 
+                                        value={loginUser}
+                                        onChange={(e) => setLoginUser(e.target.value)}
+                                        placeholder="Digite seu login"
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-blue-700"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Senha</label>
+                                    <input 
+                                        type="password" 
+                                        value={loginPass}
+                                        onChange={(e) => setLoginPass(e.target.value)}
+                                        placeholder="Digite sua senha"
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-blue-700"
+                                    />
+                                </div>
+
+                                {loginError && (
+                                    <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg border border-red-200 text-center font-medium">
+                                        {loginError}
+                                    </div>
+                                )}
+
+                                <button 
+                                    type="submit" 
+                                    className="w-full bg-unicesumar hover:bg-slate-800 text-white font-semibold py-3 rounded-xl transition shadow-lg mt-2"
+                                >
+                                    Entrar no Sistema
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
             return (
                 <div className="max-w-7xl mx-auto px-4 py-6">
                     {/* TOPO: IDENTIDADE UNICESUMAR */}
                     <div className="bg-unicesumar text-white rounded-2xl p-5 shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
-                            <h1 className="text-xl font-bold tracking-wide">UniCesumar</h1>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-xl font-bold tracking-wide">UniCesumar</h1>
+                                <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${isReadOnly ? 'bg-amber-500/20 text-amber-300 border border-amber-400/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'}`}>
+                                    {currentUser.name} ({isReadOnly ? 'Somente Leitura' : 'Editor'})
+                                </span>
+                            </div>
                             <p className="text-xs text-blue-200">Gestão de Mídia Performance & Pacing</p>
                         </div>
 
@@ -584,15 +664,14 @@
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2.5">
-                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 shadow-sm">
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                                {syncStatus}
-                            </span>
                             <button onClick={handleOpenAI} className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition">
                                 <Icon name="sparkles" className="w-4 h-4" /> Projeção IA
                             </button>
                             <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition">
                                 <Icon name="share" className="w-4 h-4" /> Partilhar
+                            </button>
+                            <button onClick={handleLogout} className="flex items-center gap-1.5 bg-red-600/80 hover:bg-red-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition">
+                                Sair
                             </button>
                         </div>
                     </div>
@@ -900,47 +979,47 @@
                                         </select>
                                     </div>
                                 </div>
-                                <button 
-                                    onClick={handleGeneratePacing}
-                                    className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition"
-                                >
-                                    <Icon name="refresh" className="w-4 h-4" /> Gerar/Resetar Pacing
-                                </button>
+                                {!isReadOnly && (
+                                    <button 
+                                        onClick={handleGeneratePacing}
+                                        className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition"
+                                    >
+                                        <Icon name="refresh" className="w-4 h-4" /> Gerar/Resetar Pacing
+                                    </button>
+                                )}
                             </div>
 
-                            {/* CONFIGURAÇÃO DE ORÇAMENTO E METAS DO PRODUTO (COM SINCRONIZAÇÃO TÉCNICOS/SAÚDE) */}
+                            {/* CONFIGURAÇÃO DE ORÇAMENTO E METAS DO PRODUTO */}
                             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-                                {TEC_GROUP.includes(selectedProduct) && (
-                                    <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-lg flex items-center gap-2">
-                                        <span className="font-bold">Nota:</span> Os produtos técnicos e de saúde (Técnico, THE, THP, THR, THS) compartilham a mesma verba e metas de inscrições/matrículas, mas mantêm campanhas separadas.
-                                    </div>
-                                )}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="text-xs font-semibold text-slate-500 uppercase">Orçamento BAU ({selectedProduct})</label>
                                         <input 
                                             type="number" 
+                                            disabled={isReadOnly}
                                             value={currentMonthBudgets[selectedProduct] || 0} 
                                             onChange={(e) => updateBudgetAndGoalsForProduct(selectedProduct, e.target.value, currentMonthGoals.inscritos, currentMonthGoals.matriculados)}
-                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700"
+                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700 disabled:opacity-70"
                                         />
                                     </div>
                                     <div>
                                         <label className="text-xs font-semibold text-slate-500 uppercase">Meta de Inscritos</label>
                                         <input 
                                             type="number" 
+                                            disabled={isReadOnly}
                                             value={currentMonthGoals.inscritos || 0} 
                                             onChange={(e) => updateBudgetAndGoalsForProduct(selectedProduct, currentMonthBudgets[selectedProduct] || 0, e.target.value, currentMonthGoals.matriculados)}
-                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700"
+                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700 disabled:opacity-70"
                                         />
                                     </div>
                                     <div>
                                         <label className="text-xs font-semibold text-slate-500 uppercase">Meta de Matriculados</label>
                                         <input 
                                             type="number" 
+                                            disabled={isReadOnly}
                                             value={currentMonthGoals.matriculados || 0} 
                                             onChange={(e) => updateBudgetAndGoalsForProduct(selectedProduct, currentMonthBudgets[selectedProduct] || 0, currentMonthGoals.inscritos, e.target.value)}
-                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700"
+                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700 disabled:opacity-70"
                                         />
                                     </div>
                                 </div>
@@ -1033,51 +1112,53 @@
 
                     {activeTab === "campaigns" && (
                         <div className="space-y-6">
-                            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                                <h3 className="text-lg font-bold text-slate-900 mb-4">Adicionar Nova Campanha ({selectedMonth}) para {selectedProduct}</h3>
-                                <form onSubmit={(e) => {
-                                    e.preventDefault();
-                                    if (!newCampName.trim()) return;
-                                    const newCamp = {
-                                        id: Date.now(),
-                                        name: newCampName,
-                                        product: newCampProduct,
-                                        tool: newCampTool,
-                                        status: "Ativa",
-                                        dailyData: {}
-                                    };
-                                    const newCamps = [...campaigns, newCamp];
-                                    saveDataToCloud(budgetsByMonth, goalsByMonth, newCamps);
-                                    setNewCampName("");
-                                }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <input 
-                                        type="text" 
-                                        value={newCampName} 
-                                        onChange={(e) => setNewCampName(e.target.value)} 
-                                        placeholder="Nome da Campanha" 
-                                        required 
-                                        className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900" 
-                                    />
-                                    <select 
-                                        value={newCampProduct} 
-                                        onChange={(e) => setNewCampProduct(e.target.value)} 
-                                        className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold"
-                                    >
-                                        {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
-                                    </select>
-                                    <select 
-                                        value={newCampTool} 
-                                        onChange={(e) => setNewCampTool(e.target.value)} 
-                                        className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold"
-                                    >
-                                        <option value="Google Ads">Google Ads</option>
-                                        <option value="Meta Ads">Meta Ads</option>
-                                    </select>
-                                    <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-4 rounded-lg font-medium flex items-center justify-center gap-2 shadow">
-                                        <Icon name="plus" /> Adicionar Campanha
-                                    </button>
-                                </form>
-                            </div>
+                            {!isReadOnly && (
+                                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4">Adicionar Nova Campanha ({selectedMonth}) para {selectedProduct}</h3>
+                                    <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (!newCampName.trim()) return;
+                                        const newCamp = {
+                                            id: Date.now(),
+                                            name: newCampName,
+                                            product: newCampProduct,
+                                            tool: newCampTool,
+                                            status: "Ativa",
+                                            dailyData: {}
+                                        };
+                                        const newCamps = [...campaigns, newCamp];
+                                        saveDataToCloud(budgetsByMonth, goalsByMonth, newCamps);
+                                        setNewCampName("");
+                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <input 
+                                            type="text" 
+                                            value={newCampName} 
+                                            onChange={(e) => setNewCampName(e.target.value)} 
+                                            placeholder="Nome da Campanha" 
+                                            required 
+                                            className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900" 
+                                        />
+                                        <select 
+                                            value={newCampProduct} 
+                                            onChange={(e) => setNewCampProduct(e.target.value)} 
+                                            className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold"
+                                        >
+                                            {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
+                                        </select>
+                                        <select 
+                                            value={newCampTool} 
+                                            onChange={(e) => setNewCampTool(e.target.value)} 
+                                            className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold"
+                                        >
+                                            <option value="Google Ads">Google Ads</option>
+                                            <option value="Meta Ads">Meta Ads</option>
+                                        </select>
+                                        <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-4 rounded-lg font-medium flex items-center justify-center gap-2 shadow">
+                                            <Icon name="plus" /> Adicionar Campanha
+                                        </button>
+                                    </form>
+                                </div>
+                            )}
 
                             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <table className="w-full text-left text-sm text-slate-700">
@@ -1088,7 +1169,7 @@
                                             <th className="px-4 py-3">Ferramenta</th>
                                             <th className="px-4 py-3">Status</th>
                                             <th className="px-4 py-3 text-center">Pacing & Conversões ({selectedMonth})</th>
-                                            <th className="px-4 py-3 text-right">Ações</th>
+                                            {!isReadOnly && <th className="px-4 py-3 text-right">Ações</th>}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200">
@@ -1113,20 +1194,22 @@
                                                         onClick={() => setCampaignPacingModal(camp)}
                                                         className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
                                                     >
-                                                        <Icon name="calendar" className="w-3.5 h-3.5" /> Gerenciar Diário & Conversões
+                                                        <Icon name="calendar" className="w-3.5 h-3.5" /> {isReadOnly ? 'Ver Diário & Conversões' : 'Gerenciar Diário & Conversões'}
                                                     </button>
                                                 </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <button 
-                                                        onClick={() => {
-                                                            const newCamps = campaigns.filter(c => c.id !== camp.id);
-                                                            saveDataToCloud(budgetsByMonth, goalsByMonth, newCamps);
-                                                        }}
-                                                        className="text-red-500 hover:text-red-700 p-1 rounded"
-                                                    >
-                                                        <Icon name="trash" className="w-4 h-4" />
-                                                    </button>
-                                                </td>
+                                                {!isReadOnly && (
+                                                    <td className="px-4 py-3 text-right">
+                                                        <button 
+                                                            onClick={() => {
+                                                                const newCamps = campaigns.filter(c => c.id !== camp.id);
+                                                                saveDataToCloud(budgetsByMonth, goalsByMonth, newCamps);
+                                                            }}
+                                                            className="text-red-500 hover:text-red-700 p-1 rounded"
+                                                        >
+                                                            <Icon name="trash" className="w-4 h-4" />
+                                                        </button>
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1219,6 +1302,7 @@
                                                         <td className="px-3 py-2">
                                                             <input 
                                                                 type="number"
+                                                                disabled={isReadOnly}
                                                                 value={currentDaily.planned}
                                                                 placeholder="0"
                                                                 onChange={(e) => {
@@ -1227,12 +1311,13 @@
                                                                     const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
                                                                     setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
                                                                 }}
-                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900"
+                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 disabled:opacity-70"
                                                             />
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <input 
                                                                 type="number"
+                                                                disabled={isReadOnly}
                                                                 value={currentDaily.realized}
                                                                 placeholder="0"
                                                                 onChange={(e) => {
@@ -1241,12 +1326,13 @@
                                                                     const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
                                                                     setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
                                                                 }}
-                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 font-semibold text-blue-700"
+                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 font-semibold text-blue-700 disabled:opacity-70"
                                                             />
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <input 
                                                                 type="number"
+                                                                disabled={isReadOnly}
                                                                 value={currentDaily.inscritos}
                                                                 placeholder="0"
                                                                 onChange={(e) => {
@@ -1255,12 +1341,13 @@
                                                                     const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
                                                                     setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
                                                                 }}
-                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 font-semibold text-slate-800"
+                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 font-semibold text-slate-800 disabled:opacity-70"
                                                             />
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <input 
                                                                 type="number"
+                                                                disabled={isReadOnly}
                                                                 value={currentDaily.matriculados}
                                                                 placeholder="0"
                                                                 onChange={(e) => {
@@ -1269,7 +1356,7 @@
                                                                     const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
                                                                     setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
                                                                 }}
-                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 font-semibold text-emerald-700"
+                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 font-semibold text-emerald-700 disabled:opacity-70"
                                                             />
                                                         </td>
                                                     </tr>
@@ -1280,18 +1367,20 @@
                                 </div>
 
                                 <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3">
-                                    <button 
-                                        onClick={() => {
-                                            const updatedCampaigns = campaigns.map(c => c.id === campaignPacingModal.id ? campaignPacingModal : c);
-                                            saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns);
-                                            setCampaignPacingModal(null);
-                                        }}
-                                        className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-medium transition shadow"
-                                    >
-                                        Guardar e Atualizar Diário & Conversões
-                                    </button>
-                                    <button onClick={() => setCampaignPacingModal(null)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-medium transition">
-                                        Cancelar
+                                    {!isReadOnly && (
+                                        <button 
+                                            onClick={() => {
+                                                const updatedCampaigns = campaigns.map(c => c.id === campaignPacingModal.id ? campaignPacingModal : c);
+                                                saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns);
+                                                setCampaignPacingModal(null);
+                                            }}
+                                            className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-medium transition shadow"
+                                        >
+                                            Guardar e Atualizar Diário & Conversões
+                                        </button>
+                                    )}
+                                    <button onClick={() => setCampaignPacingModal(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-medium transition">
+                                        {isReadOnly ? 'Fechar' : 'Cancelar'}
                                     </button>
                                 </div>
                             </div>
