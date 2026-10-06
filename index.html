@@ -70,9 +70,6 @@
             "Pós-Médica",
             "Pós-Injetáveis",
             "Técnico",
-            "Técnico em Podologia",
-            "Técnico em Enfermagem",
-            "Técnico em Radiologia",
             "Profissionalizantes"
         ];
 
@@ -98,14 +95,14 @@
             "U-EAD-GG-ONG-CAP-TEC-CONV-PADR-GENE-BR-PESQ-CPC": "Técnico",
             "U-EAD-GG-ONG-CAP-TEC-CONV-PADR-GENE-BR-PESQ-CPC-CURSOS": "Técnico",
 
-            "U-EAD-GG-ONG-CAP-THP-CONV-PADR-GENE-BR-PMAX-CPC": "Técnico em Podologia",
-            "U-EAD-GG-ONG-CAP-THP-CONV-PADR-GENE-BR-PESQ-CPC": "Técnico em Podologia",
+            "U-EAD-GG-ONG-CAP-THP-CONV-PADR-GENE-BR-PMAX-CPC": "Técnico",
+            "U-EAD-GG-ONG-CAP-THP-CONV-PADR-GENE-BR-PESQ-CPC": "Técnico",
 
-            "U-EAD-GG-ONG-CAP-THE-CONV-PADR-GENE-BR-PESQ-CPC": "Técnico em Enfermagem",
-            "U-EAD-GG-ONG-CAP-THE-CONV-PADR-GENE-BR-PMAX-CPC": "Técnico em Enfermagem",
+            "U-EAD-GG-ONG-CAP-THE-CONV-PADR-GENE-BR-PESQ-CPC": "Técnico",
+            "U-EAD-GG-ONG-CAP-THE-CONV-PADR-GENE-BR-PMAX-CPC": "Técnico",
 
-            "U-EAD-GG-ONG-CAP-THR-CONV-PADR-GENE-BR-PMAX-CPC": "Técnico em Radiologia",
-            "U-EAD-GG-ONG-CAP-THR-CONV-PADR-GENE-BR-PESQ-CPC": "Técnico em Radiologia",
+            "U-EAD-GG-ONG-CAP-THR-CONV-PADR-GENE-BR-PMAX-CPC": "Técnico",
+            "U-EAD-GG-ONG-CAP-THR-CONV-PADR-GENE-BR-PESQ-CPC": "Técnico",
 
             "U-EAD-GG-ONG-CAP-PRO-CONV-PADR-GENE-BR-PESQ-CPC": "Profissionalizantes",
             "U-EAD-GG-ONG-CAP-PRO-CONV-PADR-GENE-BR-PMAX-CPC": "Profissionalizantes",
@@ -133,9 +130,9 @@
             "U-EAD-FB-ONG-CAP-TEC-CONV-MIST-REMA-BR-MIST-CPC-INTERESSE": "Técnico",
             "U-EAD-FB-ONG-CAP-TEC-CONV-MIST-REMA-BR-MIST-CPC-INTERESSE-WHATSAPP": "Técnico",
 
-            "U-EAD-FB-ONG-CAP-THP-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE": "Técnico em Podologia",
-            "U-EAD-FB-ONG-CAP-THE-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE": "Técnico em Enfermagem",
-            "U-EAD-FB-ONG-CAP-THR-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE": "Técnico em Radiologia",
+            "U-EAD-FB-ONG-CAP-THP-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE": "Técnico",
+            "U-EAD-FB-ONG-CAP-THE-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE": "Técnico",
+            "U-EAD-FB-ONG-CAP-THR-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE": "Técnico",
 
             "U-EAD-FB-VEX-CAP-PRO-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE-LEAD_FORMS_LIVESQUINZENAIS": "Profissionalizantes",
             "U-EAD-FB-VEX-CAP-PRO-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE-CONVERSAO_LIVESQUINZENAIS": "Profissionalizantes",
@@ -192,10 +189,7 @@
                     "Pós-Graduação": 50000,
                     "Pós-Médica": 30000,
                     "Pós-Injetáveis": 30000,
-                    "Técnico": 40000,
-                    "Técnico em Podologia": 15000,
-                    "Técnico em Enfermagem": 15000,
-                    "Técnico em Radiologia": 15000,
+                    "Técnico": 80000,
                     "Profissionalizantes": 20000
                 }
             });
@@ -205,10 +199,7 @@
                     "Pós-Graduação": { inscritos: 1200, matriculados: 250 },
                     "Pós-Médica": { inscritos: 600, matriculados: 120 },
                     "Pós-Injetáveis": { inscritos: 600, matriculados: 120 },
-                    "Técnico": { inscritos: 1000, matriculados: 200 },
-                    "Técnico em Podologia": { inscritos: 300, matriculados: 60 },
-                    "Técnico em Enfermagem": { inscritos: 300, matriculados: 60 },
-                    "Técnico em Radiologia": { inscritos: 300, matriculados: 60 },
+                    "Técnico": { inscritos: 2000, matriculados: 400 },
                     "Profissionalizantes": { inscritos: 600, matriculados: 120 }
                 }
             });
@@ -284,7 +275,7 @@
 
             useEffect(() => {
                 if (!window.db) return;
-                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v2");
+                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v3");
                 
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
                     if (docSnap && docSnap.exists) {
@@ -320,7 +311,7 @@
 
                 if (window.db) {
                     setSyncStatus("A guardar...");
-                    window.db.collection("dash_data").doc("main_state_multi_month_v2").set({
+                    window.db.collection("dash_data").doc("main_state_multi_month_v3").set({
                         budgetsByMonth: b,
                         goalsByMonth: g,
                         campaigns: c,
@@ -414,18 +405,14 @@
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDays = daysInMonth.length;
-                
-                let dayWeights = daysInMonth.map(day => {
-                    return 1.0;
-                });
-                const totalWeight = totalDays;
+                const totalDaysCount = totalDays || 30;
 
                 let accumulated = 0;
                 let accumulatedInscritos = 0;
                 let accumulatedMatriculados = 0;
 
-                return daysInMonth.map((day, index) => {
-                    const defaultDayPlanned = prodBudget / totalDays;
+                return daysInMonth.map((day) => {
+                    const defaultDayPlanned = prodBudget / totalDaysCount;
 
                     let dayPlanned = 0;
                     let dayRealized = 0;
@@ -534,10 +521,7 @@
                     return campaignMap[clean];
                 }
                 const upper = clean.toUpperCase();
-                if (upper.includes('-THP-') || upper.includes('PODOLOGIA')) return 'Técnico em Podologia';
-                if (upper.includes('-THE-') || upper.includes('ENFERMAGEM')) return 'Técnico em Enfermagem';
-                if (upper.includes('-THR-') || upper.includes('RADIOLOGIA')) return 'Técnico em Radiologia';
-                if (upper.includes('-TEC-')) return 'Técnico';
+                if (upper.includes('-THP-') || upper.includes('-THE-') || upper.includes('-THR-') || upper.includes('-TEC-') || upper.includes('PODOLOGIA') || upper.includes('ENFERMAGEM') || upper.includes('RADIOLOGIA')) return 'Técnico';
                 if (upper.includes('-HPOS-') || upper.includes('-LPOS-')) return 'Pós-Médica';
                 if (upper.includes('-SES-')) return 'Pós-Injetáveis';
                 if (upper.includes('-PRO-')) return 'Profissionalizantes';
@@ -545,7 +529,7 @@
                 return 'Pós-Graduação';
             };
 
-            const handleCSVUpload = (toolType, e) => {
+            const handleUniversalCSVUpload = (e) => {
                 if (isReadOnly) return;
                 const files = e.target.files;
                 if (!files || files.length === 0) return;
@@ -574,8 +558,10 @@
                             const monthKey = `${year}-${month}`;
                             const dateKey = `${day}/${month}`; // DD/MM
 
+                            let toolType = campName.toUpperCase().includes('FB') ? 'Meta Ads' : 'Google Ads';
                             let cost = 0;
-                            if (toolType === 'Google Ads') {
+
+                            if (toolType === 'Google Ads' && (cols[2] === 'BRL' || cols.length >= 4)) {
                                 cost = parseCost(cols[3] !== undefined ? cols[3] : cols[2]);
                             } else {
                                 cost = parseCost(cols[2]);
@@ -613,7 +599,7 @@
                         });
 
                         saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns, campaignMap);
-                        alert(`Sucesso! Ficheiro de ${toolType} processado. ${importedTotal} registos distribuídos pelos respetivos produtos via rateio inteligente.`);
+                        alert(`Sucesso! Ficheiro processado. ${importedTotal} registos distribuídos automaticamente por rateio entre os produtos.`);
                         e.target.value = '';
                     };
                     reader.readAsText(file, 'UTF-8');
@@ -886,9 +872,15 @@
                             <h2 className="text-xl font-bold text-slate-900">
                                 Painel de Rateio Inteligente & Pacing
                             </h2>
-                            <p className="text-slate-500 text-sm mt-0.5">Upload de CSV Google & Meta com rateio automático por produto e gestão de novas campanhas</p>
+                            <p className="text-slate-500 text-sm mt-0.5">Upload universal de CSV com rateio automático por produto e gestão de novas campanhas</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                            {!isReadOnly && (
+                                <label className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer">
+                                    <Icon name="download" className="w-4 h-4 rotate-180" /> Subir Planilha(s) de Consumo (.csv)
+                                    <input type="file" accept=".csv" multiple onChange={handleUniversalCSVUpload} className="hidden" />
+                                </label>
+                            )}
                             <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 shadow-sm transition">
                                 <Icon name="download" className="w-4 h-4" /> Backup CSV Protegido
                             </button>
@@ -1234,7 +1226,7 @@
 
                     {activeTab === "pacing" && (
                         <div className="space-y-6">
-                            {/* BOTÕES DE UPLOAD DE CSV GOOGLE & META COM RATEIO AUTOMÁTICO */}
+                            {/* CONTROLES DE FILTRO E GERAÇÃO DE PACING */}
                             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex flex-wrap items-center gap-4">
                                     <div>
@@ -1256,17 +1248,9 @@
                                 </div>
                                 {!isReadOnly && (
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <label className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow transition cursor-pointer">
-                                            <Icon name="download" className="w-4 h-4 rotate-180" /> Subir CSV Google Ads (Rateio Automático)
-                                            <input type="file" accept=".csv" multiple onChange={(e) => handleCSVUpload('Google Ads', e)} className="hidden" />
-                                        </label>
-                                        <label className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow transition cursor-pointer">
-                                            <Icon name="download" className="w-4 h-4 rotate-180" /> Subir CSV Meta Ads (Rateio Automático)
-                                            <input type="file" accept=".csv" multiple onChange={(e) => handleCSVUpload('Meta Ads', e)} className="hidden" />
-                                        </label>
                                         <button 
                                             onClick={handleGeneratePacing}
-                                            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow transition"
+                                            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition"
                                         >
                                             <Icon name="refresh" className="w-4 h-4" /> Gerar Pacing
                                         </button>
