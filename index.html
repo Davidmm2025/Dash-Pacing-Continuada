@@ -1,1601 +1,217 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Mídia Performance & Pacing - UniCesumar</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel para compilar JSX no browser -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Firebase SDK Compat -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .bg-unicesumar { background-color: #0d233a; }
-        .text-unicesumar { color: #0d233a; }
-        .border-unicesumar { border-color: #0d233a; }
-    </style>
-</head>
-<body class="text-slate-900 min-h-screen">
-    <div id="root"></div>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDb1jyTxZCVsRltoV8cgNCH7oU24ypQx2U",
-            authDomain: "dashboard-pacing.firebaseapp.com",
-            projectId: "dashboard-pacing",
-            storageBucket: "dashboard-pacing.firebasestorage.app",
-            messagingSenderId: "116688559377",
-            appId: "1:116688559377:web:cb8b0a1e9450d23e9280b0",
-            measurementId: "G-XPFMY99N"
-        };
-        firebase.initializeApp(firebaseConfig);
-        window.db = firebase.firestore();
-    </script>
-
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-
-        const Icon = ({ name, className = "", ...props }) => {
-            const hasWidth = className.includes('w-');
-            const cls = hasWidth ? className : `w-5 h-5 ${className}`;
-
-            switch(name) {
-                case 'layout': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>;
-                case 'trending': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
-                case 'dollar': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
-                case 'calendar': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>;
-                case 'sparkles': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
-                case 'download': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
-                case 'share': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>;
-                case 'plus': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
-                case 'trash': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
-                case 'git-compare': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>;
-                case 'pie-chart': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
-                case 'refresh': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>;
-                case 'lock': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-                default: return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
-            }
-        };
-
-        const PRODUCTS = [
-            "Pós-Graduação",
-            "Pós-Híbridas",
-            "Pós-Médica",
-            "Pós-Injetáveis",
-            "Técnico",
-            "Profissionalizantes"
-        ];
-
-        const MONTHS_LIST = [
-            { id: "2026-01", name: "Janeiro 2026" },
-            { id: "2026-02", name: "Fevereiro 2026" },
-            { id: "2026-03", name: "Março 2026" },
-            { id: "2026-04", name: "Abril 2026" },
-            { id: "2026-05", name: "Maio 2026" },
-            { id: "2026-06", name: "Junho 2026" },
-            { id: "2026-07", name: "Julho 2026" },
-            { id: "2026-08", name: "Agosto 2026" },
-            { id: "2026-09", name: "Setembro 2026" },
-            { id: "2026-10", name: "Outubro 2026" },
-            { id: "2026-11", name: "Novembro 2026" },
-            { id: "2026-12", name: "Dezembro 2026" }
-        ];
-
-        function classifyCampaignProduct(campName) {
-            const upper = (campName || "").toUpperCase();
-            if (upper.includes('-TEC-')) return 'Técnico';
-            if (upper.includes('-HPOS-') || upper.includes('-THP-') || upper.includes('-THR-') || upper.includes('-THE-')) return 'Pós-Híbridas';
-            if (upper.includes('-MED-') || upper.includes('-MPOS-')) return 'Pós-Médica';
-            if (upper.includes('-INJ-') || upper.includes('-INJETAVEIS-')) return 'Pós-Injetáveis';
-            if (upper.includes('-PRO-') || upper.includes('-PROF-') || upper.includes('-SES-')) return 'Profissionalizantes';
-            if (upper.includes('-POS-') || upper.includes('-LPOS-')) return 'Pós-Graduação';
-            return 'Pós-Graduação';
-        }
-
-        function App() {
-            const [currentUser, setCurrentUser] = useState(() => {
-                try {
-                    const saved = sessionStorage.getItem("unicesumar_auth_user");
-                    return saved ? JSON.parse(saved) : null;
-                } catch(e) {
-                    return null;
-                }
-            });
-
-            const [loginUser, setLoginUser] = useState("");
-            const [loginPass, setLoginPass] = useState("");
-            const [loginError, setLoginError] = useState("");
-
-            const currentMonthDefault = (() => {
-                const now = new Date();
-                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            })();
-
-            const [selectedMonth, setSelectedMonth] = useState(currentMonthDefault);
-            const [activeTab, setActiveTab] = useState("overview");
-            const [selectedProduct, setSelectedProduct] = useState("Pós-Graduação");
-            const [selectedTool, setSelectedTool] = useState("Todas");
-            const [pacingFilter, setPacingFilter] = useState("Todos");
-
-            const [newCampName, setNewCampName] = useState("");
-            const [newCampProduct, setNewCampProduct] = useState(selectedProduct);
-            const [newCampTool, setNewCampTool] = useState("Google Ads");
-
-            const [pacingStrategy, setPacingStrategy] = useState("Igualitária (Flat)");
-            const [weekendWeight, setWeekendWeight] = useState("0.4");
-
-            useEffect(() => {
-                setNewCampProduct(selectedProduct);
-            }, [selectedProduct]);
-
-            const [budgetsByMonth, setBudgetsByMonth] = useState({
-                [currentMonthDefault]: {
-                    "Pós-Graduação": 50000,
-                    "Pós-Híbridas": 35000,
-                    "Pós-Médica": 30000,
-                    "Pós-Injetáveis": 30000,
-                    "Técnico": 80000,
-                    "Profissionalizantes": 20000
-                }
-            });
-
-            const [goalsByMonth, setGoalsByMonth] = useState({
-                [currentMonthDefault]: {
-                    "Pós-Graduação": { inscritos: 1200, matriculados: 250 },
-                    "Pós-Híbridas": { inscritos: 900, matriculados: 180 },
-                    "Pós-Médica": { inscritos: 600, matriculados: 120 },
-                    "Pós-Injetáveis": { inscritos: 600, matriculados: 120 },
-                    "Técnico": { inscritos: 2000, matriculados: 400 },
-                    "Profissionalizantes": { inscritos: 600, matriculados: 120 }
-                }
-            });
-
-            const [campaigns, setCampaigns] = useState([
-                { id: 1, name: "Google Search - Institucional", product: "Pós-Graduação", tool: "Google Ads", status: "Ativa", dailyData: {} },
-                { id: 2, name: "Meta Ads - Conversão Leads", product: "Pós-Graduação", tool: "Meta Ads", status: "Ativa", dailyData: {} },
-                { id: 3, name: "Google PMax - Pós Híbrida", product: "Pós-Híbridas", tool: "Google Ads", status: "Ativa", dailyData: {} }
-            ]);
-
-            const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-            const [aiText, setAiText] = useState("");
-            const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-            const [syncStatus, setSyncStatus] = useState("A carregar nuvem...");
-            const [campaignPacingModal, setCampaignPacingModal] = useState(null);
-
-            const [compareMonthA, setCompareMonthA] = useState(currentMonthDefault);
-            const [compareMonthB, setCompareMonthB] = useState(currentMonthDefault);
-
-            const isReadOnly = currentUser?.role === 'readonly';
-
-            const handleLogin = (e) => {
-                e.preventDefault();
-                setLoginError("");
-                const u = loginUser.trim();
-                const p = loginPass;
-
-                let authObj = null;
-                if (u === "david.marconato" && p === "#David2026") {
-                    authObj = { name: "David Martins Marconato", role: "editor" };
-                } else if (u === "thais.mazzieiro" && p === "#Thais2026") {
-                    authObj = { name: "Thais Mazzieiro", role: "editor" };
-                } else if (u === "BU" && p === "#BUcontinuada") {
-                    authObj = { name: "BU (Somente Leitura)", role: "readonly" };
-                } else {
-                    setLoginError("Login ou senha incorretos.");
-                    return;
-                }
-
-                setCurrentUser(authObj);
-                try {
-                    sessionStorage.setItem("unicesumar_auth_user", JSON.stringify(authObj));
-                } catch(e) {}
-            };
-
-            const handleLogout = () => {
-                setCurrentUser(null);
-                try {
-                    sessionStorage.removeItem("unicesumar_auth_user");
-                } catch(e) {}
-            };
-
-            const daysInMonth = useMemo(() => {
-                const parts = (selectedMonth || currentMonthDefault).split('-');
-                const year = Number(parts[0]) || 2026;
-                const month = Number(parts[1]) || 1;
-                const totalDays = new Date(year, month, 0).getDate();
-                const days = [];
-                const weekdays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-                const now = new Date();
-
-                for (let i = 1; i <= totalDays; i++) {
-                    const d = new Date(year, month - 1, i);
-                    const weekNum = Math.ceil(i / 7);
-                    days.push({
-                        dateNum: i,
-                        dateStr: `${String(i).padStart(2, '0')}/${String(month).padStart(2, '0')}`,
-                        weekday: weekdays[d.getDay()],
-                        weekNum: `Semana ${weekNum}`,
-                        isWeekend: d.getDay() === 0 || d.getDay() === 6,
-                        isPast: d < new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-                        isToday: d.toDateString() === now.toDateString()
-                    });
-                }
-                return days;
-            }, [selectedMonth]);
-
-            useEffect(() => {
-                if (!window.db) return;
-                const docRef = window.db.collection("dash_data").doc("main_state_multi_month");
-                
-                const unsubscribe = docRef.onSnapshot((docSnap) => {
-                    if (docSnap && docSnap.exists) {
-                        const data = docSnap.data() || {};
-                        if (data.budgetsByMonth) setBudgetsByMonth(prev => ({ ...prev, ...data.budgetsByMonth }));
-                        if (data.goalsByMonth) setGoalsByMonth(prev => ({ ...prev, ...data.goalsByMonth }));
-                        if (Array.isArray(data.campaigns)) setCampaigns(data.campaigns);
-                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
-                    } else {
-                        docRef.set({ budgetsByMonth, goalsByMonth, campaigns }).catch(() => {});
-                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
-                    }
-                }, (error) => {
-                    console.error("Erro ao sincronizar:", error);
-                    setSyncStatus("Modo local (Offline - Protegido)");
-                });
-
-                return () => unsubscribe();
-            }, []);
-
-            const saveDataToCloud = (newBudgets, newGoals, newCampaigns) => {
-                if (isReadOnly) return;
-                setBudgetsByMonth(newBudgets);
-                setGoalsByMonth(newGoals);
-                setCampaigns(newCampaigns);
-
-                if (window.db) {
-                    setSyncStatus("A guardar...");
-                    window.db.collection("dash_data").doc("main_state_multi_month").set({
-                        budgetsByMonth: newBudgets,
-                        goalsByMonth: newGoals,
-                        campaigns: newCampaigns
-                    }, { merge: true }).then(() => {
-                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
-                    }).catch(() => {
-                        setSyncStatus("Erro ao guardar");
-                    });
-                }
-            };
-
-            const formatBRL = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
-            const formatNum = (val) => new Intl.NumberFormat('pt-BR').format(Math.round(val || 0));
-
-            const currentMonthBudgets = useMemo(() => {
-                return (budgetsByMonth && budgetsByMonth[selectedMonth]) || {};
-            }, [budgetsByMonth, selectedMonth]);
-
-            const currentMonthGoals = useMemo(() => {
-                return (goalsByMonth && goalsByMonth[selectedMonth] && goalsByMonth[selectedMonth][selectedProduct]) || { inscritos: 0, matriculados: 0 };
-            }, [goalsByMonth, selectedMonth, selectedProduct]);
-
-            const totalSpentByProduct = useMemo(() => {
-                const map = {};
-                PRODUCTS.forEach(prod => {
-                    let total = 0;
-                    (campaigns || []).filter(c => c && c.product === prod && c.status === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool)).forEach(c => {
-                        const monthDaily = c?.dailyData?.[selectedMonth];
-                        if (monthDaily && typeof monthDaily === 'object') {
-                            Object.values(monthDaily).forEach(d => {
-                                total += Number(d?.realized) || 0;
-                            });
-                        }
-                    });
-                    map[prod] = total;
-                });
-                return map;
-            }, [campaigns, selectedMonth, selectedTool]);
-
-            const overviewGlobalStats = useMemo(() => {
-                let totalBudget = 0;
-                let totalSpent = 0;
-                let googleSpent = 0;
-                let metaSpent = 0;
-                let totalInscritos = 0;
-                let totalMatriculados = 0;
-                let totalInscritosGoal = 0;
-                let totalMatriculadosGoal = 0;
-
-                const curBudgets = (budgetsByMonth && budgetsByMonth[selectedMonth]) || {};
-                const curGoals = (goalsByMonth && goalsByMonth[selectedMonth]) || {};
-
-                PRODUCTS.forEach(p => {
-                    totalBudget += Number(curBudgets[p]) || 0;
-                    const g = curGoals[p] || {};
-                    totalInscritosGoal += Number(g.inscritos) || 0;
-                    totalMatriculadosGoal += Number(g.matriculados) || 0;
-                });
-
-                (campaigns || []).forEach(c => {
-                    if (c && c.status === "Ativa") {
-                        const monthDaily = c?.dailyData?.[selectedMonth];
-                        if (monthDaily && typeof monthDaily === 'object') {
-                            Object.values(monthDaily).forEach(d => {
-                                const val = Number(d?.realized) || 0;
-                                const ins = Number(d?.inscritos) || 0;
-                                const mat = Number(d?.matriculados) || 0;
-                                totalSpent += val;
-                                totalInscritos += ins;
-                                totalMatriculados += mat;
-                                if (c.tool === "Google Ads") googleSpent += val;
-                                if (c.tool === "Meta Ads") metaSpent += val;
-                            });
-                        }
-                    }
-                });
-
-                const totalPct = totalBudget > 0 ? Math.min(Math.round((totalSpent / totalBudget) * 100), 100) : 0;
-                const totalBalance = totalBudget - totalSpent;
-                const googlePct = totalSpent > 0 ? Math.round((googleSpent / totalSpent) * 100) : 0;
-                const metaPct = totalSpent > 0 ? Math.round((metaSpent / totalSpent) * 100) : 0;
-                const inscritosPct = totalInscritosGoal > 0 ? Math.round((totalInscritos / totalInscritosGoal) * 100) : 0;
-                const matriculadosPct = totalMatriculadosGoal > 0 ? Math.round((totalMatriculados / totalMatriculadosGoal) * 100) : 0;
-                const avgCpi = totalInscritos > 0 ? totalSpent / totalInscritos : 0;
-                const avgCpa = totalMatriculados > 0 ? totalSpent / totalMatriculados : 0;
-
-                return { totalBudget, totalSpent, totalPct, totalBalance, googleSpent, metaSpent, googlePct, metaPct, totalInscritos, totalMatriculados, totalInscritosGoal, totalMatriculadosGoal, inscritosPct, matriculadosPct, avgCpi, avgCpa };
-            }, [budgetsByMonth, goalsByMonth, campaigns, selectedMonth]);
-
-            const pacingRows = useMemo(() => {
-                const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
-                const totalDays = daysInMonth.length;
-                
-                let dayWeights = daysInMonth.map(day => {
-                    if (pacingStrategy === "Ponderada (FDS x Úteis)") {
-                        return day.isWeekend ? (Number(weekendWeight) || 0.4) : 1.0;
-                    }
-                    return 1.0;
-                });
-                const totalWeight = dayWeights.reduce((a, b) => a + b, 0) || totalDays;
-
-                let accumulated = 0;
-                let accumulatedInscritos = 0;
-                let accumulatedMatriculados = 0;
-
-                return daysInMonth.map((day, index) => {
-                    const defaultDayPlanned = prodBudget * (dayWeights[index] / totalWeight);
-
-                    let dayPlanned = 0;
-                    let dayRealized = 0;
-                    let dayInscritos = 0;
-                    let dayMatriculados = 0;
-                    let hasCampaignData = false;
-
-                    (campaigns || [])
-                        .filter(c => c && c.product === selectedProduct && c.status === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool))
-                        .forEach(c => {
-                            const dEntry = c?.dailyData?.[selectedMonth]?.[day.dateStr];
-                            if (dEntry) {
-                                if (dEntry.planned !== undefined && dEntry.planned !== "") {
-                                    hasCampaignData = true;
-                                    dayPlanned += Number(dEntry.planned) || 0;
-                                }
-                                if (dEntry.realized !== undefined && dEntry.realized !== "") {
-                                    dayRealized += Number(dEntry.realized) || 0;
-                                }
-                                if (dEntry.inscritos !== undefined && dEntry.inscritos !== "") {
-                                    dayInscritos += Number(dEntry.inscritos) || 0;
-                                }
-                                if (dEntry.matriculados !== undefined && dEntry.matriculados !== "") {
-                                    dayMatriculados += Number(dEntry.matriculados) || 0;
-                                }
-                            }
-                        });
-
-                    const planned = hasCampaignData ? dayPlanned : defaultDayPlanned;
-                    const realized = dayRealized;
-
-                    accumulated += realized;
-                    accumulatedInscritos += dayInscritos;
-                    accumulatedMatriculados += dayMatriculados;
-
-                    const balance = prodBudget - accumulated;
-                    const delta = realized - planned;
-
-                    let status = "Dentro do Pacing";
-                    if (realized > planned * 1.1) status = "Overbudget";
-                    else if (realized < planned * 0.9 && day.isPast) status = "Underbudget";
-
-                    return { 
-                        ...day, 
-                        planned, 
-                        realized, 
-                        delta, 
-                        accumulated, 
-                        balance, 
-                        inscritos: dayInscritos, 
-                        matriculados: dayMatriculados,
-                        accumulatedInscritos,
-                        accumulatedMatriculados,
-                        status 
-                    };
-                });
-            }, [selectedProduct, currentMonthBudgets, daysInMonth, campaigns, selectedMonth, selectedTool, pacingStrategy, weekendWeight]);
-
-            const filteredPacingRows = useMemo(() => {
-                return (pacingRows || []).filter(row => {
-                    if (pacingFilter === "Todos") return true;
-                    if (pacingFilter.startsWith("Semana")) return row.weekNum === pacingFilter;
-                    if (pacingFilter === "Dias Úteis") return !row.isWeekend;
-                    if (pacingFilter === "Fins de Semana") return row.isWeekend;
-                    return true;
-                });
-            }, [pacingRows, pacingFilter]);
-
-            const parseCSVLine = (text) => {
-                const result = [];
-                let insideQuotes = false;
-                let entry = '';
-                for (let i = 0; i < text.length; i++) {
-                    const c = text[i];
-                    if (c === '"') {
-                        insideQuotes = !insideQuotes;
-                    } else if (c === ',' && !insideQuotes) {
-                        result.push(entry.trim());
-                        entry = '';
-                    } else {
-                        entry += c;
-                    }
-                }
-                result.push(entry.trim());
-                return result.map(item => item.replace(/^"|"$/g, ''));
-            };
-
-            const parseCost = (valStr) => {
-                if (!valStr) return 0;
-                let clean = String(valStr).replace(/[^\d,\.-]/g, '');
-                if (clean.includes(',') && clean.includes('.')) {
-                    if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-                        clean = clean.replace(/\./g, '').replace(',', '.');
-                    } else {
-                        clean = clean.replace(/,/g, '');
-                    }
-                } else if (clean.includes(',')) {
-                    clean = clean.replace(',', '.');
-                }
-                return Number(clean) || 0;
-            };
-
-            const handleCSVUpload = (toolType, e) => {
-                if (isReadOnly) return;
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const content = event.target.result;
-                    const lines = content.split(/\r?\n/);
-                    let updatedCampaigns = JSON.parse(JSON.stringify(campaigns));
-                    let importedRecords = 0;
-                    let skippedRecords = 0;
-
-                    lines.forEach(line => {
-                        if (!line.trim()) return;
-                        const cols = parseCSVLine(line);
-                        if (cols.length < 3) return;
-
-                        const campName = cols[0];
-                        if (!campName || campName.toLowerCase().includes('campanha') || campName.toLowerCase().includes('nome da')) return;
-
-                        const dateStrCsv = cols[1]; // YYYY-MM-DD
-                        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStrCsv)) return;
-
-                        const [year, month, day] = dateStrCsv.split('-');
-                        const monthKey = `${year}-${month}`;
-                        const dateKey = `${day}/${month}`; // DD/MM
-
-                        let cost = 0;
-                        if (toolType === 'Google Ads') {
-                            cost = parseCost(cols[3] !== undefined ? cols[3] : cols[2]);
-                        } else {
-                            cost = parseCost(cols[2]);
-                        }
-
-                        if (isNaN(cost)) cost = 0;
-
-                        // Verificar rigorosamente se a campanha pertence ao produto selecionado
-                        const derivedProduct = classifyCampaignProduct(campName);
-                        if (derivedProduct !== selectedProduct) {
-                            skippedRecords++;
-                            return;
-                        }
-
-                        let camp = updatedCampaigns.find(c => c && c.name === campName && c.product === selectedProduct && c.tool === toolType);
-                        if (!camp) {
-                            camp = {
-                                id: Date.now() + Math.random(),
-                                name: campName,
-                                product: selectedProduct,
-                                tool: toolType,
-                                status: "Ativa",
-                                dailyData: {}
-                            };
-                            updatedCampaigns.push(camp);
-                        }
-
-                        const campDaily = { ...(camp.dailyData || {}) };
-                        const monthDaily = { ...(campDaily[monthKey] || {}) };
-                        const existingDay = monthDaily[dateKey] || { planned: '', realized: 0, inscritos: '', matriculados: '' };
-
-                        monthDaily[dateKey] = {
-                            ...existingDay,
-                            realized: cost
-                        };
-
-                        campDaily[monthKey] = monthDaily;
-                        camp.dailyData = campDaily;
-                        importedRecords++;
-                    });
-
-                    if (importedRecords > 0) {
-                        saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns);
-                        alert(`Sucesso! Importados ${importedRecords} registos de ${toolType} para o produto "${selectedProduct}" (${selectedMonth}). (Ignoradas ${skippedRecords} campanhas de outros produtos).`);
-                    } else {
-                        alert(`Nenhum registo correspondente ao produto selecionado ("${selectedProduct}") foi encontrado neste ficheiro CSV de ${toolType}. Certifique-se de que está na aba correta do produto.`);
-                    }
-                    e.target.value = '';
-                };
-                reader.readAsText(file, 'UTF-8');
-            };
-
-            const handleGeneratePacing = () => {
-                if (isReadOnly) return;
-                const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
-                const totalDays = daysInMonth.length;
-                
-                let dayWeights = daysInMonth.map(day => {
-                    if (pacingStrategy === "Ponderada (FDS x Úteis)") {
-                        return day.isWeekend ? (Number(weekendWeight) || 0.4) : 1.0;
-                    }
-                    return 1.0;
-                });
-                const totalWeight = dayWeights.reduce((a, b) => a + b, 0) || totalDays;
-
-                const targetCampaigns = (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa");
-                if (targetCampaigns.length === 0) {
-                    alert("Não existem campanhas ativas para este produto para aplicar o pacing.");
-                    return;
-                }
-
-                const updatedCampaigns = (campaigns || []).map(camp => {
-                    if (camp && camp.product === selectedProduct && camp.status === "Ativa") {
-                        const campDaily = { ...(camp.dailyData || {}) };
-                        const monthDaily = { ...(campDaily[selectedMonth] || {}) };
-                        const share = 1 / targetCampaigns.length;
-
-                        daysInMonth.forEach((day, index) => {
-                            const dayPlanned = (prodBudget * (dayWeights[index] / totalWeight)) * share;
-                            const existing = monthDaily[day.dateStr] || {};
-                            monthDaily[day.dateStr] = {
-                                ...existing,
-                                planned: Math.round(dayPlanned * 100) / 100
-                            };
-                        });
-
-                        campDaily[selectedMonth] = monthDaily;
-                        return { ...camp, dailyData: campDaily };
-                    }
-                    return camp;
-                });
-
-                saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns);
-                alert("Pacing gerado/resetado com sucesso para " + selectedProduct + "!");
-            };
-
-            const updateBudgetAndGoalsForProduct = (prodName, newBudget, newInscritos, newMatriculados) => {
-                if (isReadOnly) return;
-                const updatedBudgets = { ...(budgetsByMonth || {}) };
-                if (!updatedBudgets[selectedMonth]) updatedBudgets[selectedMonth] = {};
-
-                const updatedGoals = { ...(goalsByMonth || {}) };
-                if (!updatedGoals[selectedMonth]) updatedGoals[selectedMonth] = {};
-
-                updatedBudgets[selectedMonth][prodName] = Number(newBudget);
-                updatedGoals[selectedMonth][prodName] = {
-                    inscritos: Number(newInscritos),
-                    matriculados: Number(newMatriculados)
-                };
-
-                saveDataToCloud(updatedBudgets, updatedGoals, campaigns);
-            };
-
-            const currentKPIs = useMemo(() => {
-                const budget = Number(currentMonthBudgets[selectedProduct]) || 0;
-                const totalRealized = (pacingRows || []).reduce((acc, r) => acc + (r.realized || 0), 0);
-                const totalInscritos = (pacingRows || []).reduce((acc, r) => acc + (r.inscritos || 0), 0);
-                const totalMatriculados = (pacingRows || []).reduce((acc, r) => acc + (r.matriculados || 0), 0);
-
-                const inscritosGoal = Number(currentMonthGoals.inscritos) || 0;
-                const matriculadosGoal = Number(currentMonthGoals.matriculados) || 0;
-
-                const inscritosPct = inscritosGoal > 0 ? Math.min(Math.round((totalInscritos / inscritosGoal) * 100), 100) : 0;
-                const matriculadosPct = matriculadosGoal > 0 ? Math.min(Math.round((totalMatriculados / matriculadosGoal) * 100), 100) : 0;
-
-                const cpi = totalInscritos > 0 ? totalRealized / totalInscritos : 0;
-                const cpa = totalMatriculados > 0 ? totalRealized / totalMatriculados : 0;
-
-                const targetCpi = inscritosGoal > 0 ? budget / inscritosGoal : 0;
-                const targetCpa = matriculadosGoal > 0 ? budget / matriculadosGoal : 0;
-
-                const balance = budget - totalRealized;
-                const pastDays = (pacingRows || []).filter(r => r.isPast);
-                const lastPast = pastDays[pastDays.length - 1] || pacingRows[0];
-                const futureDaysCount = (pacingRows || []).filter(r => !r.isPast && !r.isToday).length || 1;
-                const suggestedPacing = balance > 0 ? balance / futureDaysCount : 0;
-
-                return {
-                    budget,
-                    totalRealized,
-                    balance,
-                    totalInscritos,
-                    totalMatriculados,
-                    inscritosGoal,
-                    matriculadosGoal,
-                    inscritosPct,
-                    matriculadosPct,
-                    cpi,
-                    cpa,
-                    targetCpi,
-                    targetCpa,
-                    lastDayRealized: lastPast?.realized || 0,
-                    lastDayStatus: lastPast?.status || "Normal",
-                    suggestedPacing
-                };
-            }, [selectedProduct, currentMonthBudgets, currentMonthGoals, pacingRows]);
-
-            const getMonthStatsForComparison = (monthKey) => {
-                let mBudget = 0;
-                let mSpent = 0;
-                let mInscritos = 0;
-                let mMatriculados = 0;
-                let mInscritosGoal = 0;
-                let mMatriculadosGoal = 0;
-
-                const mBudgets = (budgetsByMonth && budgetsByMonth[monthKey]) || {};
-                const mGoals = (goalsByMonth && goalsByMonth[monthKey]) || {};
-
-                PRODUCTS.forEach(p => {
-                    mBudget += Number(mBudgets[p]) || 0;
-                    const g = mGoals[p] || {};
-                    mInscritosGoal += Number(g.inscritos) || 0;
-                    mMatriculadosGoal += Number(g.matriculados) || 0;
-                });
-
-                (campaigns || []).forEach(c => {
-                    const monthDaily = c?.dailyData?.[monthKey];
-                    if (monthDaily && typeof monthDaily === 'object') {
-                        Object.values(monthDaily).forEach(d => {
-                            mSpent += Number(d?.realized) || 0;
-                            mInscritos += Number(d?.inscritos) || 0;
-                            mMatriculados += Number(d?.matriculados) || 0;
-                        });
-                    }
-                });
-
-                const cpi = mInscritos > 0 ? mSpent / mInscritos : 0;
-                const cpa = mMatriculados > 0 ? mSpent / mMatriculados : 0;
-                const targetCpi = mInscritosGoal > 0 ? mBudget / mInscritosGoal : 0;
-                const targetCpa = mMatriculadosGoal > 0 ? mBudget / mMatriculadosGoal : 0;
-
-                return { mBudget, mSpent, mInscritos, mMatriculados, mInscritosGoal, mMatriculadosGoal, cpi, cpa, targetCpi, targetCpa };
-            };
-
-            const handleExportCSV = () => {
-                let csv = "Tipo,Mes,Produto,Ferramenta,Valor\n";
-                Object.keys(budgetsByMonth || {}).forEach(m => {
-                    PRODUCTS.forEach(p => csv += `Orcamento,${m},${p},Geral,${budgetsByMonth[m]?.[p] || 0}\n`);
-                });
-                
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `backup_protegido_orcamentos_${new Date().toISOString().slice(0,10)}.csv`;
-                a.click();
-            };
-
-            const handleOpenAI = () => {
-                setIsAiModalOpen(true);
-                setAiText("A analisar métricas de performance, pacing e projeção de fim de mês com Inteligência Artificial...");
-                setTimeout(() => {
-                    const pastDays = (pacingRows || []).filter(r => r.isPast).length || 1;
-                    const totalDays = (pacingRows || []).length || 30;
-                    const runRateSpent = (currentKPIs.totalRealized / pastDays) * totalDays;
-                    const runRateIns = (currentKPIs.totalInscritos / pastDays) * totalDays;
-                    const runRateMat = (currentKPIs.totalMatriculados / pastDays) * totalDays;
-
-                    setAiText(`🤖 Projeção Inteligente de Fechamento de Mês (${selectedProduct} - ${selectedMonth}):\n\n- Orçamento Disponível: ${formatBRL(currentKPIs.budget)}\n- Consumo Projetado (Run-Rate): ${formatBRL(runRateSpent)}\n- Inscritos Projetados: ${formatNum(runRateIns)} (Meta: ${formatNum(currentKPIs.inscritosGoal)})\n- Matriculados Projetados: ${formatNum(runRateMat)} (Meta: ${formatNum(currentKPIs.matriculadosGoal)})\n- CPI Projetado: ${formatBRL(runRateIns > 0 ? runRateSpent / runRateIns : 0)} (Meta: ${formatBRL(currentKPIs.targetCpi)})\n- CPA Projetado: ${formatBRL(runRateMat > 0 ? runRateSpent / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpa)})\n\nRecomendação da IA: O ritmo atual indica ${runRateSpent > currentKPIs.budget ? 'estouro de orçamento projetado' : 'bom controle orçamentário'}. Ajuste o pacing diário para ${formatBRL(currentKPIs.suggestedPacing)} para atingir as metas de conversão.`);
-                }, 1000);
-            };
-
-            // TELA DE LOGIN OBRIGATÓRIA
-            if (!currentUser) {
-                return (
-                    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl border border-slate-700">
-                            <div className="text-center mb-6">
-                                <div className="inline-flex p-3 bg-unicesumar text-white rounded-2xl shadow-md mb-3">
-                                    <Icon name="lock" className="w-8 h-8" />
-                                </div>
-                                <h1 className="text-2xl font-bold text-slate-900">UniCesumar</h1>
-                                <p className="text-xs text-slate-500 mt-1">Gestão de Mídia Performance & Pacing</p>
-                            </div>
-
-                            <form onSubmit={handleLogin} className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Usuário / Login</label>
-                                    <input 
-                                        type="text" 
-                                        value={loginUser}
-                                        onChange={(e) => setLoginUser(e.target.value)}
-                                        placeholder="Digite seu login"
-                                        required
-                                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-blue-700"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Senha</label>
-                                    <input 
-                                        type="password" 
-                                        value={loginPass}
-                                        onChange={(e) => setLoginPass(e.target.value)}
-                                        placeholder="Digite sua senha"
-                                        required
-                                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-sm focus:outline-none focus:border-blue-700"
-                                    />
-                                </div>
-
-                                {loginError && (
-                                    <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg border border-red-200 text-center font-medium">
-                                        {loginError}
-                                    </div>
-                                )}
-
-                                <button 
-                                    type="submit" 
-                                    className="w-full bg-unicesumar hover:bg-slate-800 text-white font-semibold py-3 rounded-xl transition shadow-lg mt-2"
-                                >
-                                    Entrar no Sistema
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="max-w-7xl mx-auto px-4 py-6">
-                    {/* TOPO: IDENTIDADE UNICESUMAR */}
-                    <div className="bg-unicesumar text-white rounded-2xl p-5 shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-xl font-bold tracking-wide">UniCesumar</h1>
-                                <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${isReadOnly ? 'bg-amber-500/20 text-amber-300 border border-amber-400/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'}`}>
-                                    {currentUser.name} ({isReadOnly ? 'Somente Leitura' : 'Editor'})
-                                </span>
-                            </div>
-                            <p className="text-xs text-blue-200">Gestão de Mídia Performance & Pacing</p>
-                        </div>
-
-                        <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/20">
-                            <Icon name="calendar" className="w-5 h-5 text-blue-300" />
-                            <div>
-                                <label className="block text-[10px] uppercase tracking-wider text-blue-200 font-semibold">Mês de Referência</label>
-                                <select 
-                                    value={selectedMonth}
-                                    onChange={(e) => setSelectedMonth(e.target.value)}
-                                    className="bg-transparent font-bold text-white text-sm focus:outline-none cursor-pointer"
-                                >
-                                    {MONTHS_LIST.map(m => (
-                                        <option key={m.id} value={m.id} className="text-slate-900">{m.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2.5">
-                            <button onClick={handleOpenAI} className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition">
-                                <Icon name="sparkles" className="w-4 h-4" /> Projeção IA
-                            </button>
-                            <button onClick={() => setIsShareModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition">
-                                <Icon name="share" className="w-4 h-4" /> Partilhar
-                            </button>
-                            <button onClick={handleLogout} className="flex items-center gap-1.5 bg-red-600/80 hover:bg-red-600 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow transition">
-                                Sair
-                            </button>
-                        </div>
-                    </div>
-
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-4">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-900">
-                                Painel de Controle Consolidado & Proteção de Dados
-                            </h2>
-                            <p className="text-slate-500 text-sm mt-0.5">Controle de BAU, Campanhas, Metas de Conversão (CPI/CPA) e Pacing Diário</p>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={handleExportCSV} className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 shadow-sm transition">
-                                <Icon name="download" className="w-4 h-4" /> Backup CSV Protegido
-                            </button>
-                        </div>
-                    </header>
-
-                    {/* Abas de Produtos & Comparativo */}
-                    <div className="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-                        <button
-                            onClick={() => setActiveTab("overview")}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${activeTab === "overview" ? 'bg-unicesumar text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
-                        >
-                            📊 Visão Geral & Gráficos
-                        </button>
-                        {PRODUCTS.map(prod => (
-                            <button
-                                key={prod}
-                                onClick={() => { setSelectedProduct(prod); setActiveTab("pacing"); }}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab !== "overview" && activeTab !== "comparison" && selectedProduct === prod ? 'bg-blue-700 text-white shadow' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
-                            >
-                                {prod}
-                            </button>
-                        ))}
-                        <button
-                            onClick={() => setActiveTab("comparison")}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ml-auto flex items-center gap-1.5 ${activeTab === "comparison" ? 'bg-emerald-700 text-white shadow' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'}`}
-                        >
-                            <Icon name="git-compare" className="w-4 h-4 text-emerald-700" /> Comparativo Meses & Metas
-                        </button>
-                    </div>
-
-                    {activeTab !== "comparison" && activeTab !== "overview" && (
-                        <div className="flex justify-between items-center mb-6 bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Canal:</span>
-                                {["Todas", "Google Ads", "Meta Ads"].map(tool => (
-                                    <button
-                                        key={tool}
-                                        onClick={() => setSelectedTool(tool)}
-                                        className={`px-3 py-1 rounded-md text-xs font-medium transition ${selectedTool === tool ? 'bg-unicesumar text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                                    >
-                                        {tool}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => setActiveTab("pacing")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'pacing' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`}>
-                                    📅 Pacing & Metas (CPI/CPA)
-                                </button>
-                                <button onClick={() => setActiveTab("campaigns")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'campaigns' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`}>
-                                    🚀 Campanhas
-                                </button>
-                                <button onClick={() => setActiveTab("reports")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'reports' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`}>
-                                    📈 Relatórios & Gráficos
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* VISÃO GERAL COM GRÁFICOS */}
-                    {activeTab === "overview" && (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Orçamento Total Global</span>
-                                    <p className="text-2xl font-bold text-slate-900 mt-2">{formatBRL(overviewGlobalStats.totalBudget)}</p>
-                                    <p className="text-xs text-slate-500 mt-1">Soma de todos os produtos</p>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Consumo Realizado Total</span>
-                                    <p className="text-2xl font-bold text-blue-700 mt-2">{formatBRL(overviewGlobalStats.totalSpent)}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                            <div className="bg-blue-600 h-full rounded-full" style={{ width: `${overviewGlobalStats.totalPct}%` }}></div>
-                                        </div>
-                                        <span className="text-xs font-bold text-slate-600">{overviewGlobalStats.totalPct}%</span>
-                                    </div>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Inscritos Globais (Real/Meta)</span>
-                                    <p className="text-2xl font-bold text-slate-900 mt-2">{formatNum(overviewGlobalStats.totalInscritos)} <span className="text-xs text-slate-400 font-normal">/ {formatNum(overviewGlobalStats.totalInscritosGoal)}</span></p>
-                                    <p className="text-xs text-blue-600 font-semibold mt-1">Atingimento: {overviewGlobalStats.inscritosPct}% (CPI: {formatBRL(overviewGlobalStats.avgCpi)})</p>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Matriculados Globais (Real/Meta)</span>
-                                    <p className="text-2xl font-bold text-slate-900 mt-2">{formatNum(overviewGlobalStats.totalMatriculados)} <span className="text-xs text-slate-400 font-normal">/ {formatNum(overviewGlobalStats.totalMatriculadosGoal)}</span></p>
-                                    <p className="text-xs text-emerald-600 font-semibold mt-1">Atingimento: {overviewGlobalStats.matriculadosPct}% (CPA: {formatBRL(overviewGlobalStats.avgCpa)})</p>
-                                </div>
-                            </div>
-
-                            {/* GRÁFICOS VISUAIS NO RESUMO EXECUTIVO */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                        <Icon name="pie-chart" className="text-blue-700" /> Gráfico: Consumo vs Orçamento por Produto
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {PRODUCTS.map(prod => {
-                                            const b = currentMonthBudgets[prod] || 0;
-                                            const spent = totalSpentByProduct[prod] || 0;
-                                            const pct = b > 0 ? Math.min(Math.round((spent / b) * 100), 100) : 0;
-                                            return (
-                                                <div key={prod} className="text-xs">
-                                                    <div className="flex justify-between font-semibold text-slate-700 mb-1">
-                                                        <span>{prod}</span>
-                                                        <span>{formatBRL(spent)} / {formatBRL(b)} ({pct}%)</span>
-                                                    </div>
-                                                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                                                        <div className={`h-full rounded-full ${pct > 100 ? 'bg-red-500' : 'bg-blue-600'}`} style={{ width: `${pct}%` }}></div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                        <Icon name="trending" className="text-emerald-700" /> Gráfico: Atingimento de Metas (Matriculados)
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {PRODUCTS.map(prod => {
-                                            const goalObj = (goalsByMonth && goalsByMonth[selectedMonth] && goalsByMonth[selectedMonth][prod]) || { matriculados: 0 };
-                                            const goalMat = goalObj.matriculados || 1;
-                                            let realMat = 0;
-                                            (campaigns || []).filter(c => c && c.product === prod && c.status === "Ativa").forEach(c => {
-                                                const monthDaily = c?.dailyData?.[selectedMonth];
-                                                if (monthDaily && typeof monthDaily === 'object') {
-                                                    Object.values(monthDaily).forEach(d => {
-                                                        realMat += Number(d?.matriculados) || 0;
-                                                    });
-                                                }
-                                            });
-                                            const pctMat = Math.min(Math.round((realMat / goalMat) * 100), 100);
-                                            return (
-                                                <div key={prod} className="text-xs">
-                                                    <div className="flex justify-between font-semibold text-slate-700 mb-1">
-                                                        <span>{prod}</span>
-                                                        <span>{formatNum(realMat)} / {formatNum(goalMat)} mat. ({pctMat}%)</span>
-                                                    </div>
-                                                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                                                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pctMat}%` }}></div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* COMPARATIVO DE MESES & METAS */}
-                    {activeTab === "comparison" && (
-                        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
-                            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
-                                <div className="p-2 bg-emerald-50 rounded-xl text-emerald-700">
-                                    <Icon name="git-compare" className="w-5 h-5" />
-                                </div>
-                                Comparativo Avançado entre Meses (Orçamento, Metas, CPI & CPA)
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Mês A (Base)</label>
-                                    <select value={compareMonthA} onChange={(e) => setCompareMonthA(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold">
-                                        {MONTHS_LIST.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Mês B (Comparação)</label>
-                                    <select value={compareMonthB} onChange={(e) => setCompareMonthB(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold">
-                                        {MONTHS_LIST.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {(() => {
-                                const statsA = getMonthStatsForComparison(compareMonthA);
-                                const statsB = getMonthStatsForComparison(compareMonthB);
-                                return (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
-                                            <h3 className="text-xs font-semibold text-slate-500 uppercase">Orçamento & Gasto</h3>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">Orçamento A:</span>
-                                                <span className="font-bold">{formatBRL(statsA.mBudget)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">Orçamento B:</span>
-                                                <span className="font-bold text-blue-700">{formatBRL(statsB.mBudget)}</span>
-                                            </div>
-                                            <hr className="border-slate-200"/>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">Realizado A:</span>
-                                                <span className="font-bold">{formatBRL(statsA.mSpent)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">Realizado B:</span>
-                                                <span className="font-bold text-blue-700">{formatBRL(statsB.mSpent)}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
-                                            <h3 className="text-xs font-semibold text-slate-500 uppercase">Inscritos & CPI</h3>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">Inscritos (Real/Meta) A:</span>
-                                                <span className="font-bold">{formatNum(statsA.mInscritos)} / {formatNum(statsA.mInscritosGoal)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">Inscritos (Real/Meta) B:</span>
-                                                <span className="font-bold text-blue-700">{formatNum(statsB.mInscritos)} / {formatNum(statsB.mInscritosGoal)}</span>
-                                            </div>
-                                            <hr className="border-slate-200"/>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">CPI Real A (Meta):</span>
-                                                <span className="font-bold">{formatBRL(statsA.cpi)} ({formatBRL(statsA.targetCpi)})</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">CPI Real B (Meta):</span>
-                                                <span className="font-bold text-amber-700">{formatBRL(statsB.cpi)} ({formatBRL(statsB.targetCpi)})</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
-                                            <h3 className="text-xs font-semibold text-slate-500 uppercase">Matriculados & CPA</h3>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">Matriculados (Real/Meta) A:</span>
-                                                <span className="font-bold">{formatNum(statsA.mMatriculados)} / {formatNum(statsA.mMatriculadosGoal)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">Matriculados (Real/Meta) B:</span>
-                                                <span className="font-bold text-blue-700">{formatNum(statsB.mMatriculados)} / {formatNum(statsB.mMatriculadosGoal)}</span>
-                                            </div>
-                                            <hr className="border-slate-200"/>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">CPA Real A (Meta):</span>
-                                                <span className="font-bold">{formatBRL(statsA.cpa)} ({formatBRL(statsA.targetCpa)})</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-slate-500">CPA Real B (Meta):</span>
-                                                <span className="font-bold text-purple-700">{formatBRL(statsB.cpa)} ({formatBRL(statsB.targetCpa)})</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    )}
-
-                    {activeTab === "pacing" && (
-                        <div className="space-y-6">
-                            {/* CONTROLES DE ESTRATÉGIA DE PACING, FILTROS E IMPORTAÇÃO CSV SEPARADA */}
-                            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
-                                <div className="flex flex-wrap items-center gap-4">
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Estratégia de Pacing</label>
-                                        <select 
-                                            value={pacingStrategy} 
-                                            onChange={(e) => setPacingStrategy(e.target.value)}
-                                            className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold text-sm focus:outline-none focus:border-blue-700"
-                                        >
-                                            <option value="Igualitária (Flat)">Igualitária (Flat)</option>
-                                            <option value="Ponderada (FDS x Úteis)">Ponderada (FDS x Úteis)</option>
-                                        </select>
-                                    </div>
-                                    {pacingStrategy === "Ponderada (FDS x Úteis)" && (
-                                        <div>
-                                            <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Peso fim de semana</label>
-                                            <input 
-                                                type="number" 
-                                                step="0.1" 
-                                                min="0" 
-                                                max="2"
-                                                value={weekendWeight} 
-                                                onChange={(e) => setWeekendWeight(e.target.value)}
-                                                className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold text-sm w-36 focus:outline-none focus:border-blue-700" 
-                                            />
-                                        </div>
-                                    )}
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Filtrar Período</label>
-                                        <select 
-                                            value={pacingFilter} 
-                                            onChange={(e) => setPacingFilter(e.target.value)}
-                                            className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold text-sm focus:outline-none focus:border-blue-700"
-                                        >
-                                            <option value="Todos">Todos os Dias</option>
-                                            <option value="Semana 1">Semana 1</option>
-                                            <option value="Semana 2">Semana 2</option>
-                                            <option value="Semana 3">Semana 3</option>
-                                            <option value="Semana 4">Semana 4</option>
-                                            <option value="Dias Úteis">Apenas Dias Úteis</option>
-                                            <option value="Fins de Semana">Apenas Fim de Semana</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                {!isReadOnly && (
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <label className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow transition cursor-pointer">
-                                            <Icon name="download" className="w-4 h-4 rotate-180" /> CSV Google Ads ({selectedProduct})
-                                            <input type="file" accept=".csv" onChange={(e) => handleCSVUpload('Google Ads', e)} className="hidden" />
-                                        </label>
-                                        <label className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow transition cursor-pointer">
-                                            <Icon name="download" className="w-4 h-4 rotate-180" /> CSV Meta Ads ({selectedProduct})
-                                            <input type="file" accept=".csv" onChange={(e) => handleCSVUpload('Meta Ads', e)} className="hidden" />
-                                        </label>
-                                        <button 
-                                            onClick={handleGeneratePacing}
-                                            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow transition"
-                                        >
-                                            <Icon name="refresh" className="w-4 h-4" /> Gerar Pacing
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* CONFIGURAÇÃO DE ORÇAMENTO E METAS DO PRODUTO */}
-                            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="text-xs font-semibold text-slate-500 uppercase">Orçamento BAU ({selectedProduct})</label>
-                                        <input 
-                                            type="number" 
-                                            disabled={isReadOnly}
-                                            value={currentMonthBudgets[selectedProduct] || 0} 
-                                            onChange={(e) => updateBudgetAndGoalsForProduct(selectedProduct, e.target.value, currentMonthGoals.inscritos, currentMonthGoals.matriculados)}
-                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700 disabled:opacity-70"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-semibold text-slate-500 uppercase">Meta de Inscritos</label>
-                                        <input 
-                                            type="number" 
-                                            disabled={isReadOnly}
-                                            value={currentMonthGoals.inscritos || 0} 
-                                            onChange={(e) => updateBudgetAndGoalsForProduct(selectedProduct, currentMonthBudgets[selectedProduct] || 0, e.target.value, currentMonthGoals.matriculados)}
-                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700 disabled:opacity-70"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-semibold text-slate-500 uppercase">Meta de Matriculados</label>
-                                        <input 
-                                            type="number" 
-                                            disabled={isReadOnly}
-                                            value={currentMonthGoals.matriculados || 0} 
-                                            onChange={(e) => updateBudgetAndGoalsForProduct(selectedProduct, currentMonthBudgets[selectedProduct] || 0, currentMonthGoals.inscritos, e.target.value)}
-                                            className="mt-2 w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-bold text-lg focus:outline-none focus:border-blue-700 disabled:opacity-70"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* KPI CARDS DE GASTO, CONVERSÃO, CPI E CPA */}
-                            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">Consumo Realizado</span>
-                                    <p className="text-lg font-bold text-blue-700 mt-1">{formatBRL(currentKPIs.totalRealized)}</p>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">Saldo Restante</span>
-                                    <p className="text-lg font-bold text-emerald-600 mt-1">{formatBRL(currentKPIs.balance)}</p>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">Inscritos (Real / Meta)</span>
-                                    <p className="text-lg font-bold text-slate-900 mt-1">{formatNum(currentKPIs.totalInscritos)} <span className="text-xs font-normal text-slate-500">/ {formatNum(currentKPIs.inscritosGoal)}</span></p>
-                                    <span className="text-xs font-semibold text-blue-600">{currentKPIs.inscritosPct}% atingido</span>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">Matriculados (Real / Meta)</span>
-                                    <p className="text-lg font-bold text-slate-900 mt-1">{formatNum(currentKPIs.totalMatriculados)} <span className="text-xs font-normal text-slate-500">/ {formatNum(currentKPIs.matriculadosGoal)}</span></p>
-                                    <span className="text-xs font-semibold text-emerald-600">{currentKPIs.matriculadosPct}% atingido</span>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPI (Real / Meta)</span>
-                                    <p className="text-lg font-bold text-amber-700 mt-1">{formatBRL(currentKPIs.cpi)} <span className="text-[10px] font-normal text-slate-400">({formatBRL(currentKPIs.targetCpi)})</span></p>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPA (Real / Meta)</span>
-                                    <p className="text-lg font-bold text-purple-700 mt-1">{formatBRL(currentKPIs.cpa)} <span className="text-[10px] font-normal text-slate-400">({formatBRL(currentKPIs.targetCpa)})</span></p>
-                                </div>
-                            </div>
-
-                            {/* TABELA DE PACING COM FILTROS */}
-                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm text-slate-700">
-                                        <thead className="bg-slate-100 text-slate-600 uppercase text-xs border-b border-slate-200">
-                                            <tr>
-                                                <th className="px-4 py-3">Data</th>
-                                                <th className="px-4 py-3">Dia</th>
-                                                <th className="px-4 py-3">Semana</th>
-                                                <th className="px-4 py-3">Meta Planejada (R$)</th>
-                                                <th className="px-4 py-3">Realizado (R$)</th>
-                                                <th className="px-4 py-3">Delta</th>
-                                                <th className="px-4 py-3">Acumulado</th>
-                                                <th className="px-4 py-3">Saldo</th>
-                                                <th className="px-4 py-3">Inscritos (Dia / Acum)</th>
-                                                <th className="px-4 py-3">Matriculados (Dia / Acum)</th>
-                                                <th className="px-4 py-3">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-200">
-                                            {filteredPacingRows.map((row) => {
-                                                const isOver10 = row.realized > row.planned * 1.1;
-                                                return (
-                                                    <tr key={row.dateStr} className={`hover:bg-slate-50 ${isOver10 ? 'bg-red-50/50' : ''} ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
-                                                        <td className="px-4 py-3 text-slate-900">{row.dateStr}</td>
-                                                        <td className="px-4 py-3 text-slate-500">{row.weekday}</td>
-                                                        <td className="px-4 py-3 text-slate-400 text-xs">{row.weekNum}</td>
-                                                        <td className="px-4 py-3">{formatBRL(row.planned)}</td>
-                                                        <td className="px-4 py-3 font-semibold text-blue-700">{formatBRL(row.realized)}</td>
-                                                        <td className={`px-4 py-3 font-medium ${row.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                            {row.delta > 0 ? `+${formatBRL(row.delta)}` : formatBRL(row.delta)}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-slate-900">{formatBRL(row.accumulated)}</td>
-                                                        <td className="px-4 py-3 text-emerald-600">{formatBRL(row.balance)}</td>
-                                                        <td className="px-4 py-3 font-medium text-slate-800">
-                                                            {row.inscritos} <span className="text-xs text-slate-400 font-normal">({row.accumulatedInscritos})</span>
-                                                        </td>
-                                                        <td className="px-4 py-3 font-medium text-slate-800">
-                                                            {row.matriculados} <span className="text-xs text-slate-400 font-normal">({row.accumulatedMatriculados})</span>
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${row.status === 'Overbudget' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
-                                                                {row.status}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === "campaigns" && (
-                        <div className="space-y-6">
-                            {!isReadOnly && (
-                                <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                                    <h3 className="text-lg font-bold text-slate-900 mb-4">Adicionar Nova Campanha ({selectedMonth}) para {selectedProduct}</h3>
-                                    <form onSubmit={(e) => {
-                                        e.preventDefault();
-                                        if (!newCampName.trim()) return;
-                                        const newCamp = {
-                                            id: Date.now(),
-                                            name: newCampName,
-                                            product: newCampProduct,
-                                            tool: newCampTool,
-                                            status: "Ativa",
-                                            dailyData: {}
-                                        };
-                                        const newCamps = [...(campaigns || []), newCamp];
-                                        saveDataToCloud(budgetsByMonth, goalsByMonth, newCamps);
-                                        setNewCampName("");
-                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        <input 
-                                            type="text" 
-                                            value={newCampName} 
-                                            onChange={(e) => setNewCampName(e.target.value)} 
-                                            placeholder="Nome da Campanha" 
-                                            required 
-                                            className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900" 
-                                        />
-                                        <select 
-                                            value={newCampProduct} 
-                                            onChange={(e) => setNewCampProduct(e.target.value)} 
-                                            className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold"
-                                        >
-                                            {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
-                                        </select>
-                                        <select 
-                                            value={newCampTool} 
-                                            onChange={(e) => setNewCampTool(e.target.value)} 
-                                            className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold"
-                                        >
-                                            <option value="Google Ads">Google Ads</option>
-                                            <option value="Meta Ads">Meta Ads</option>
-                                        </select>
-                                        <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white px-4 rounded-lg font-medium flex items-center justify-center gap-2 shadow">
-                                            <Icon name="plus" /> Adicionar Campanha
-                                        </button>
-                                    </form>
-                                </div>
-                            )}
-
-                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                                <table className="w-full text-left text-sm text-slate-700">
-                                    <thead className="bg-slate-100 text-slate-600 uppercase text-xs border-b border-slate-200">
-                                        <tr>
-                                            <th className="px-4 py-3">Campanha ({selectedProduct})</th>
-                                            <th className="px-4 py-3">Produto</th>
-                                            <th className="px-4 py-3">Ferramenta</th>
-                                            <th className="px-4 py-3">Status</th>
-                                            <th className="px-4 py-3 text-center">Pacing & Conversões ({selectedMonth})</th>
-                                            {!isReadOnly && <th className="px-4 py-3 text-right">Ações</th>}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-200">
-                                        {(campaigns || [])
-                                            .filter(c => c && c.product === selectedProduct && (selectedTool === 'Todas' || c.tool === selectedTool))
-                                            .map(camp => (
-                                            <tr key={camp.id} className="hover:bg-slate-50">
-                                                <td className="px-4 py-3 font-semibold text-slate-900">{camp.name}</td>
-                                                <td className="px-4 py-3">{camp.product}</td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${camp.tool === 'Google Ads' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
-                                                        {camp.tool}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                        {camp.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <button 
-                                                        onClick={() => setCampaignPacingModal(camp)}
-                                                        className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-                                                    >
-                                                        <Icon name="calendar" className="w-3.5 h-3.5" /> {isReadOnly ? 'Ver Diário & Conversões' : 'Gerenciar Diário & Conversões'}
-                                                    </button>
-                                                </td>
-                                                {!isReadOnly && (
-                                                    <td className="px-4 py-3 text-right">
-                                                        <button 
-                                                            onClick={() => {
-                                                                const newCamps = (campaigns || []).filter(c => c && c.id !== camp.id);
-                                                                saveDataToCloud(budgetsByMonth, goalsByMonth, newCamps);
-                                                            }}
-                                                            className="text-red-500 hover:text-red-700 p-1 rounded"
-                                                        >
-                                                            <Icon name="trash" className="w-4 h-4" />
-                                                        </button>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === "reports" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                                <h3 className="text-lg font-bold text-slate-900 mb-4">Investimento por Ferramenta ({selectedMonth})</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <div className="flex justify-between text-sm mb-1 text-slate-700">
-                                            <span>Google Ads</span>
-                                            <span className="font-bold">{overviewGlobalStats.googlePct}%</span>
-                                        </div>
-                                        <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                            <div className="bg-amber-500 h-full rounded-full" style={{ width: `${overviewGlobalStats.googlePct}%` }}></div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between text-sm mb-1 text-slate-700">
-                                            <span>Meta Ads</span>
-                                            <span className="font-bold">{overviewGlobalStats.metaPct}%</span>
-                                        </div>
-                                        <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                            <div className="bg-blue-600 h-full rounded-full" style={{ width: `${overviewGlobalStats.metaPct}%` }}></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                                <h3 className="text-lg font-bold text-slate-900 mb-4">Distribuição do Orçamento Global</h3>
-                                <div className="space-y-3">
-                                    {PRODUCTS.map(p => {
-                                        const totalB = Object.values(currentMonthBudgets).reduce((a,b)=>a+b, 1);
-                                        const pct = Math.round(((currentMonthBudgets[p] || 0) / (totalB || 1)) * 100);
-                                        return (
-                                            <div key={p} className="flex items-center justify-between text-sm">
-                                                <span className="text-slate-700">{p}</span>
-                                                <div className="flex items-center gap-3 w-1/2">
-                                                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                                        <div className="bg-blue-700 h-full rounded-full" style={{ width: `${pct}%` }}></div>
-                                                    </div>
-                                                    <span className="text-xs font-bold text-slate-500">{pct}%</span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {campaignPacingModal && (
-                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                            <div className="bg-white border border-slate-200 rounded-2xl max-w-4xl w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
-                                <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                            <Icon name="calendar" className="text-blue-700" /> Diário & Conversões ({selectedMonth}): {campaignPacingModal.name}
-                                        </h3>
-                                        <p className="text-xs text-slate-500 mt-0.5">Produto: {campaignPacingModal.product} | Canal: {campaignPacingModal.tool}</p>
-                                    </div>
-                                    <button onClick={() => setCampaignPacingModal(null)} className="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
-                                </div>
-
-                                <div className="overflow-y-auto flex-1 pr-2 space-y-2">
-                                    <table className="w-full text-left text-sm text-slate-700">
-                                        <thead className="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0">
-                                            <tr>
-                                                <th className="px-3 py-2">Data</th>
-                                                <th className="px-3 py-2">Dia</th>
-                                                <th className="px-3 py-2">Planejado (R$)</th>
-                                                <th className="px-3 py-2">Realizado (R$)</th>
-                                                <th className="px-3 py-2">Inscritos</th>
-                                                <th className="px-3 py-2">Matriculados</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {daysInMonth.map(day => {
-                                                const monthDaily = (campaignPacingModal.dailyData && campaignPacingModal.dailyData[selectedMonth]) || {};
-                                                const currentDaily = monthDaily[day.dateStr] || { planned: '', realized: '', inscritos: '', matriculados: '' };
-                                                return (
-                                                    <tr key={day.dateStr} className="hover:bg-slate-50">
-                                                        <td className="px-3 py-2 font-medium text-slate-900">{day.dateStr}</td>
-                                                        <td className="px-3 py-2 text-slate-500">{day.weekday}</td>
-                                                        <td className="px-3 py-2">
-                                                            <input 
-                                                                type="number"
-                                                                disabled={isReadOnly}
-                                                                value={currentDaily.planned}
-                                                                placeholder="0"
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    const updatedMonthDaily = { ...monthDaily, [day.dateStr]: { ...currentDaily, planned: val } };
-                                                                    const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
-                                                                    setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
-                                                                }}
-                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 disabled:opacity-70"
-                                                            />
-                                                        </td>
-                                                        <td className="px-3 py-2">
-                                                            <input 
-                                                                type="number"
-                                                                disabled={isReadOnly}
-                                                                value={currentDaily.realized}
-                                                                placeholder="0"
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    const updatedMonthDaily = { ...monthDaily, [day.dateStr]: { ...currentDaily, realized: val } };
-                                                                    const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
-                                                                    setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
-                                                                }}
-                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 font-semibold text-blue-700 disabled:opacity-70"
-                                                            />
-                                                        </td>
-                                                        <td className="px-3 py-2">
-                                                            <input 
-                                                                type="number"
-                                                                disabled={isReadOnly}
-                                                                value={currentDaily.inscritos}
-                                                                placeholder="0"
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    const updatedMonthDaily = { ...monthDaily, [day.dateStr]: { ...currentDaily, inscritos: val } };
-                                                                    const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
-                                                                    setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
-                                                                }}
-                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 font-semibold text-slate-800 disabled:opacity-70"
-                                                            />
-                                                        </td>
-                                                        <td className="px-3 py-2">
-                                                            <input 
-                                                                type="number"
-                                                                disabled={isReadOnly}
-                                                                value={currentDaily.matriculados}
-                                                                placeholder="0"
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    const updatedMonthDaily = { ...monthDaily, [day.dateStr]: { ...currentDaily, matriculados: val } };
-                                                                    const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
-                                                                    setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
-                                                                }}
-                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-24 text-slate-900 font-semibold text-emerald-700 disabled:opacity-70"
-                                                            />
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div className="mt-4 pt-3 border-t border-slate-100 flex gap-3">
-                                    {!isReadOnly && (
-                                        <button 
-                                            onClick={() => {
-                                                const updatedCampaigns = (campaigns || []).map(c => c && c.id === campaignPacingModal.id ? campaignPacingModal : c);
-                                                saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns);
-                                                setCampaignPacingModal(null);
-                                            }}
-                                            className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-medium transition shadow"
-                                        >
-                                            Guardar e Atualizar Diário & Conversões
-                                        </button>
-                                    )}
-                                    <button onClick={() => setCampaignPacingModal(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-medium transition">
-                                        {isReadOnly ? 'Fechar' : 'Cancelar'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {isAiModalOpen && (
-                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                            <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-xl">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                        <Icon name="sparkles" className="text-purple-600" /> Projeção IA & Ritmo de Mídia
-                                    </h3>
-                                    <button onClick={() => setIsAiModalOpen(false)} className="text-slate-400 hover:text-slate-700">✕</button>
-                                </div>
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-slate-700 text-sm whitespace-pre-line leading-relaxed">
-                                    {aiText}
-                                </div>
-                                <button onClick={() => setIsAiModalOpen(false)} className="mt-6 w-full bg-blue-700 hover:bg-blue-800 text-white py-2 rounded-xl font-medium transition shadow">
-                                    Fechar
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {isShareModalOpen && (
-                        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                            <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl">
-                                <h3 className="text-lg font-bold text-slate-900 mb-2">Partilhar Dashboard</h3>
-                                <p className="text-sm text-slate-500 mb-4">Copie o link abaixo para aceder ao painel publicado:</p>
-                                <input 
-                                    type="text" 
-                                    readOnly 
-                                    value={window.location.href}
-                                    onClick={(e) => e.target.select()}
-                                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-sm mb-4 select-all"
-                                />
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(window.location.href);
-                                            alert("Link copiado para a área de transferência!");
-                                        }}
-                                        className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2 rounded-xl font-medium transition shadow"
-                                    >
-                                        Copiar Link
-                                    </button>
-                                    <button onClick={() => setIsShareModalOpen(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-medium transition">
-                                        Fechar
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
-</body>
-</html>
+Quero que crie uma lp, onde vou subir duas planilhas e você ira fazer o rateio do investimento por produto.
+
+
+
+Eles serão divididos em.
+
+
+
+GOOGLE
+
+
+
+Pós-graduação
+
+
+
+U-EAD-GG-ONG-CAP-POS-CONV-PADR-GENE-BR-PESQ-CPC
+
+U-EAD-GG-ONG-CAP-POS-CONV-PADR-GENE-BR-PMAX-CPC
+
+U-EAD-GG-ONG-CAP-POS-CONV-PADR-GENE-BR-PESQ-CPC-TOP-CURSOS
+
+U-EAD-GG-ONG-CAP-POS-CONV-PADR-BRAN-BR-PESQ-CPC
+
+U-EAD-GG-ONG-CAP-POS-CONV-PADR-GENE-BR-PMAX-CPC-PORTIFOLIO-4.0-SAUDE-E-BEM-ESTAR
+
+U-EAD-GG-ONG-CAP-POS-CONS-PADR-GENE-BR-DGEN-CPC
+
+U-EAD-GG-ONG-CAP-POS-CONV-PADR-GENE-BR-PESQ-CPC-PORTIFOLIO-4.0-SAUDE-E-BEM-ESTAR
+
+U-EAD-GG-ONG-CAP-POS-CONV-PADR-GENE-BR-PESQ-CPC-PORTIFOLIO-4.0-CIENCIA-E-TECNOLOGIA
+
+U-EAD-GG-ONG-CAP-POS-CONV-PADR-GENE-BR-PMAX-CPC-PORTIFOLIO-4.0-CIENCIA-E-TECNOLOGIA
+
+
+
+Pós Médica
+
+
+
+U-EAD-GG-ONG-CAP-LPOS-CONV-PADR-GENE-BR-PMAX-CPC
+
+U-EAD-GG-ONG-CAP-HPOS-CONV-PADR-GENE-BR-PMAX-CPC
+
+
+
+Pós Estética
+
+
+
+U-EAD-GG-ONG-CAP-SES-CONV-PADR-GENE-BR-PESQ-CPC-V2
+
+U-EAD-GG-ONG-CAP-SES-CONV-PADR-GENE-BR-PMAX-CPC-V2
+
+
+
+Técnicos
+
+
+
+U-EAD-GG-ONG-CAP-TEC-CONV-PADR-GENE-BR-PMAX-CPC
+
+U-EAD-GG-ONG-CAP-TEC-CONV-PADR-GENE-BR-PESQ-CPC
+
+U-EAD-GG-ONG-CAP-TEC-CONV-PADR-GENE-BR-PESQ-CPC-CURSOS
+
+
+
+Técnico em Podologia
+
+
+
+U-EAD-GG-ONG-CAP-THP-CONV-PADR-GENE-BR-PMAX-CPC
+
+U-EAD-GG-ONG-CAP-THP-CONV-PADR-GENE-BR-PESQ-CPC
+
+
+
+Técnico em Enfermagem
+
+
+
+U-EAD-GG-ONG-CAP-THE-CONV-PADR-GENE-BR-PESQ-CPC
+
+U-EAD-GG-ONG-CAP-THE-CONV-PADR-GENE-BR-PMAX-CPC
+
+
+
+Técnico em Radiologia
+
+
+
+U-EAD-GG-ONG-CAP-THR-CONV-PADR-GENE-BR-PMAX-CPC
+
+U-EAD-GG-ONG-CAP-THR-CONV-PADR-GENE-BR-PESQ-CPC
+
+
+
+Profissionalizantes
+
+
+
+U-EAD-GG-ONG-CAP-PRO-CONV-PADR-GENE-BR-PESQ-CPC
+
+U-EAD-GG-ONG-CAP-PRO-CONV-PADR-GENE-BR-PMAX-CPC
+
+
+
+
+
+META
+
+
+
+Pós-graduação
+
+
+
+U-EAD-FB-ONG-CAP-POS-CONV-MIST-GENE-BR-MIST-CPC-CATALOGO
+
+U-EAD-FB-ONG-CAP-POS-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE
+
+U-EAD-FB-ONG-CAP-POS-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE-PORTIFOLIO-SAUDE-E-BEM-ESTAR
+
+U-EAD-FB-ONG-CAP-POS-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE-PORTIFOLIO-CIENCIA-E-TECNOLOGIA
+
+U-EAD-FB-ONG-CAP-POS-CONV-MIST-REMA-BR-MIST-CPC-INTERESSE
+
+U-EAD-FB-ONG-CAP-POS-CONV-MIST-REMA-BR-MIST-CPC-INTERESSE-WHATSAPP
+
+
+
+
+
+Pós Médica
+
+
+
+U-EAD-FB-ONG-CAP-HPOS-CONV-PADR-GENE-BR-MIST-CPC-INTERESSE-DERMATOLOGIA
+
+U-EAD-FB-ONG-CAP-HPOS-CONV-PADR-GENE-BR-MIST-CPC-INTERESSE-PSIQUIATRIA
+
+U-EAD-FB-ONG-CAP-HPOS-CONV-PADR-GENE-BR-MIST-CPC-INTERESSE-CARDIOLOGIA
+
+U-EAD-FB-ONG-CAP-HPOS-CONV-PADR-REMA-BR-MIST-CPC-SAUDE
+
+U-EAD-FB-ONG-CAP-LPOS-CONV-PADR-GENE-BR-MIST-CPC-SAUDE
+
+U-EAD-FB-ONG-CAP-LPOS-CONV-PADR-GENE-BR-MIST-CPC-SAUDE-MIXOFF
+
+
+
+
+
+Pós Estética
+
+
+
+U-EAD-FB-ONG-CAP-SES-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE-V2
+
+U-EAD-FB-ONG-CAP-SES-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE-FORMADS
+
+
+
+
+
+Técnicos
+
+
+
+U-EAD-FB-ONG-CAP-TEC-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE
+
+U-EAD-FB-ONG-CAP-TEC-CONV-MIST-GENE-BR-MIST-CPC-CATALOGO
+
+U-EAD-FB-ONG-CAP-TEC-CONV-MIST-REMA-BR-MIST-CPC-INTERESSE
+
+U-EAD-FB-ONG-CAP-TEC-CONV-MIST-REMA-BR-MIST-CPC-INTERESSE-WHATSAPP
+
+
+
+
+
+Técnico em Podologia
+
+
+
+U-EAD-FB-ONG-CAP-THP-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE
+
+
+
+Técnico em Enfermagem
+
+
+
+U-EAD-FB-ONG-CAP-THE-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE
+
+
+
+Técnico em Radiologia
+
+
+
+U-EAD-FB-ONG-CAP-THR-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE
+
+
+
+Profissionalizantes
+
+
+
+U-EAD-FB-VEX-CAP-PRO-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE-LEAD_FORMS_LIVESQUINZENAIS
+
+U-EAD-FB-VEX-CAP-PRO-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE-CONVERSAO_LIVESQUINZENAIS
+
+U-EAD-FB-ONG-CAP-PRO-CONV-MIST-GENE-BR-MIST-CPC-CATALOGO
+
+U-EAD-FB-ONG-CAP-PRO-CONV-MIST-GENE-BR-MIST-CPC-INTERESSE
