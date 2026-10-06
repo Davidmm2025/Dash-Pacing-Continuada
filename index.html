@@ -275,7 +275,8 @@
 
             useEffect(() => {
                 if (!window.db) return;
-                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v5");
+                // APONTA DE VOLTA PARA O DOCUMENTO ORIGINAL ONDE AS SUAS CAMPANHAS ESTAVAM SALVAS
+                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v3");
                 
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
                     if (docSnap && docSnap.exists) {
@@ -311,7 +312,7 @@
 
                 if (window.db) {
                     setSyncStatus("A guardar...");
-                    window.db.collection("dash_data").doc("main_state_multi_month_v5").set({
+                    window.db.collection("dash_data").doc("main_state_multi_month_v3").set({
                         budgetsByMonth: b,
                         goalsByMonth: g,
                         campaigns: c,
