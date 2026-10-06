@@ -275,7 +275,6 @@
 
             useEffect(() => {
                 if (!window.db) return;
-                // APONTA DE VOLTA PARA O DOCUMENTO ORIGINAL ONDE AS SUAS CAMPANHAS ESTAVAM SALVAS
                 const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v3");
                 
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
@@ -452,12 +451,16 @@
                     const balance = prodBudget - accumulated;
                     const delta = realized - planned;
 
-                    // CORREÇÃO DE CORES E STATUS:
-                    // Se realizou mais que o planejado (delta > 0), é Overbudget (vermelho).
-                    // Se realizou menos que o planejado (delta < 0), é Underbudget (verde).
+                    // CORREÇÃO RIGOROSA DE STATUS E CORES:
+                    // Se realizou mais que o planejado (realized > planned), é Overbudget (vermelho).
+                    // Se realizou menos que o planejado (realized < planned), é Underbudget (verde).
+                    // Se for igual, Dentro do Pacing.
                     let status = "Dentro do Pacing";
-                    if (realized > planned * 1.05) status = "Overbudget";
-                    else if (realized < planned * 0.95 && day.isPast) status = "Underbudget";
+                    if (realized > planned) {
+                        status = "Overbudget";
+                    } else if (realized < planned) {
+                        status = "Underbudget";
+                    }
 
                     return { 
                         ...day, 
@@ -1333,7 +1336,7 @@
                                 </div>
                             </div>
 
-                            {/* TABELA DE PACING COM CORES CORRIGIDAS (MAIOR QUE PLANEJADO = VERMELHO; MENOR = VERDE) */}
+                            {/* TABELA DE PACING COM CORREÇÃO RIGOROSA: MAIOR QUE PLANEJADO = OVERBUDGET (VERMELHO) */}
                             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm text-slate-700">
