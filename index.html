@@ -88,6 +88,17 @@
             { id: "2026-12", name: "Dezembro 2026" }
         ];
 
+        function classifyCampaignProduct(campName) {
+            const upper = (campName || "").toUpperCase();
+            if (upper.includes('-TEC-')) return 'Técnico';
+            if (upper.includes('-HPOS-') || upper.includes('-THP-') || upper.includes('-THR-') || upper.includes('-THE-')) return 'Pós-Híbridas';
+            if (upper.includes('-MED-') || upper.includes('-MPOS-')) return 'Pós-Médica';
+            if (upper.includes('-INJ-') || upper.includes('-INJETAVEIS-')) return 'Pós-Injetáveis';
+            if (upper.includes('-PRO-') || upper.includes('-PROF-') || upper.includes('-SES-')) return 'Profissionalizantes';
+            if (upper.includes('-POS-') || upper.includes('-LPOS-')) return 'Pós-Graduação';
+            return 'Pós-Graduação';
+        }
+
         function App() {
             const [currentUser, setCurrentUser] = useState(() => {
                 try {
@@ -460,7 +471,7 @@
                 return Number(clean) || 0;
             };
 
-            const handleCSVUpload = (e) => {
+            const handleCSVUpload = (toolType, e) => {
                 if (isReadOnly) return;
                 const file = e.target.files[0];
                 if (!file) return;
@@ -471,6 +482,7 @@
                     const lines = content.split(/\r?\n/);
                     let updatedCampaigns = JSON.parse(JSON.stringify(campaigns));
                     let importedRecords = 0;
+                    let skippedRecords = 0;
 
                     lines.forEach(line => {
                         if (!line.trim()) return;
@@ -478,8 +490,9 @@
                         if (cols.length < 3) return;
 
                         const campName = cols[0];
-                        const dateStrCsv = cols[1]; // YYYY-MM-DD
+                        if (!campName || campName.toLowerCase().includes('campanha') || campName.toLowerCase().includes('nome da')) return;
 
+                        const dateStrCsv = cols[1]; // YYYY-MM-DD
                         if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStrCsv)) return;
 
                         const [year, month, day] = dateStrCsv.split('-');
@@ -487,25 +500,28 @@
                         const dateKey = `${day}/${month}`; // DD/MM
 
                         let cost = 0;
-                        // Google Ads format has 'BRL' or currency at cols[2] and cost at cols[3]
-                        // Meta Ads format has cost directly at cols[2]
-                        if (cols.length >= 4 && (cols[2] === 'BRL' || cols[2].toUpperCase().includes('USD') || cols[2].length <= 5)) {
-                            cost = parseCost(cols[3]);
+                        if (toolType === 'Google Ads') {
+                            cost = parseCost(cols[3] !== undefined ? cols[3] : cols[2]);
                         } else {
                             cost = parseCost(cols[2]);
                         }
 
                         if (isNaN(cost)) cost = 0;
 
-                        const tool = campName.startsWith('U-EAD-FB') ? 'Meta Ads' : 'Google Ads';
+                        // Verificar rigorosamente se a campanha pertence ao produto selecionado
+                        const derivedProduct = classifyCampaignProduct(campName);
+                        if (derivedProduct !== selectedProduct) {
+                            skippedRecords++;
+                            return;
+                        }
 
-                        let camp = updatedCampaigns.find(c => c.name === campName && c.product === selectedProduct);
+                        let camp = updatedCampaigns.find(c => c && c.name === campName && c.product === selectedProduct && c.tool === toolType);
                         if (!camp) {
                             camp = {
                                 id: Date.now() + Math.random(),
                                 name: campName,
                                 product: selectedProduct,
-                                tool: tool,
+                                tool: toolType,
                                 status: "Ativa",
                                 dailyData: {}
                             };
@@ -528,9 +544,9 @@
 
                     if (importedRecords > 0) {
                         saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns);
-                        alert(`Sucesso! Importados ${importedRecords} registos de consumo via CSV para ${selectedProduct} (${selectedMonth}).`);
+                        alert(`Sucesso! Importados ${importedRecords} registos de ${toolType} para o produto "${selectedProduct}" (${selectedMonth}). (Ignoradas ${skippedRecords} campanhas de outros produtos).`);
                     } else {
-                        alert("Nenhum dado válido encontrado no ficheiro CSV. Verifique se o formato corresponde ao Google Ads ou Meta Ads.");
+                        alert(`Nenhum registo correspondente ao produto selecionado ("${selectedProduct}") foi encontrado neste ficheiro CSV de ${toolType}. Certifique-se de que está na aba correta do produto.`);
                     }
                     e.target.value = '';
                 };
@@ -1064,7 +1080,7 @@
 
                     {activeTab === "pacing" && (
                         <div className="space-y-6">
-                            {/* CONTROLES DE ESTRATÉGIA DE PACING, FILTROS E IMPORTAÇÃO CSV */}
+                            {/* CONTROLES DE ESTRATÉGIA DE PACING, FILTROS E IMPORTAÇÃO CSV SEPARADA */}
                             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex flex-wrap items-center gap-4">
                                     <div>
@@ -1111,15 +1127,19 @@
                                 </div>
                                 {!isReadOnly && (
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <label className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition cursor-pointer">
-                                            <Icon name="download" className="w-4 h-4 rotate-180" /> Importar CSV ({selectedProduct})
-                                            <input type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
+                                        <label className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow transition cursor-pointer">
+                                            <Icon name="download" className="w-4 h-4 rotate-180" /> CSV Google Ads ({selectedProduct})
+                                            <input type="file" accept=".csv" onChange={(e) => handleCSVUpload('Google Ads', e)} className="hidden" />
+                                        </label>
+                                        <label className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow transition cursor-pointer">
+                                            <Icon name="download" className="w-4 h-4 rotate-180" /> CSV Meta Ads ({selectedProduct})
+                                            <input type="file" accept=".csv" onChange={(e) => handleCSVUpload('Meta Ads', e)} className="hidden" />
                                         </label>
                                         <button 
                                             onClick={handleGeneratePacing}
-                                            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition"
+                                            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2.5 rounded-xl text-xs font-semibold shadow transition"
                                         >
-                                            <Icon name="refresh" className="w-4 h-4" /> Gerar/Resetar Pacing
+                                            <Icon name="refresh" className="w-4 h-4" /> Gerar Pacing
                                         </button>
                                     </div>
                                 )}
