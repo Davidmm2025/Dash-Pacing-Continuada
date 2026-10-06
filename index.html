@@ -426,6 +426,117 @@
                 });
             }, [pacingRows, pacingFilter]);
 
+            const parseCSVLine = (text) => {
+                const result = [];
+                let insideQuotes = false;
+                let entry = '';
+                for (let i = 0; i < text.length; i++) {
+                    const c = text[i];
+                    if (c === '"') {
+                        insideQuotes = !insideQuotes;
+                    } else if (c === ',' && !insideQuotes) {
+                        result.push(entry.trim());
+                        entry = '';
+                    } else {
+                        entry += c;
+                    }
+                }
+                result.push(entry.trim());
+                return result.map(item => item.replace(/^"|"$/g, ''));
+            };
+
+            const parseCost = (valStr) => {
+                if (!valStr) return 0;
+                let clean = String(valStr).replace(/[^\d,\.-]/g, '');
+                if (clean.includes(',') && clean.includes('.')) {
+                    if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+                        clean = clean.replace(/\./g, '').replace(',', '.');
+                    } else {
+                        clean = clean.replace(/,/g, '');
+                    }
+                } else if (clean.includes(',')) {
+                    clean = clean.replace(',', '.');
+                }
+                return Number(clean) || 0;
+            };
+
+            const handleCSVUpload = (e) => {
+                if (isReadOnly) return;
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const content = event.target.result;
+                    const lines = content.split(/\r?\n/);
+                    let updatedCampaigns = JSON.parse(JSON.stringify(campaigns));
+                    let importedRecords = 0;
+
+                    lines.forEach(line => {
+                        if (!line.trim()) return;
+                        const cols = parseCSVLine(line);
+                        if (cols.length < 3) return;
+
+                        const campName = cols[0];
+                        const dateStrCsv = cols[1]; // YYYY-MM-DD
+
+                        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStrCsv)) return;
+
+                        const [year, month, day] = dateStrCsv.split('-');
+                        const monthKey = `${year}-${month}`;
+                        const dateKey = `${day}/${month}`; // DD/MM
+
+                        let cost = 0;
+                        // Google Ads format has 'BRL' or currency at cols[2] and cost at cols[3]
+                        // Meta Ads format has cost directly at cols[2]
+                        if (cols.length >= 4 && (cols[2] === 'BRL' || cols[2].toUpperCase().includes('USD') || cols[2].length <= 5)) {
+                            cost = parseCost(cols[3]);
+                        } else {
+                            cost = parseCost(cols[2]);
+                        }
+
+                        if (isNaN(cost)) cost = 0;
+
+                        const tool = campName.startsWith('U-EAD-FB') ? 'Meta Ads' : 'Google Ads';
+
+                        let camp = updatedCampaigns.find(c => c.name === campName && c.product === selectedProduct);
+                        if (!camp) {
+                            camp = {
+                                id: Date.now() + Math.random(),
+                                name: campName,
+                                product: selectedProduct,
+                                tool: tool,
+                                status: "Ativa",
+                                dailyData: {}
+                            };
+                            updatedCampaigns.push(camp);
+                        }
+
+                        const campDaily = { ...(camp.dailyData || {}) };
+                        const monthDaily = { ...(campDaily[monthKey] || {}) };
+                        const existingDay = monthDaily[dateKey] || { planned: '', realized: 0, inscritos: '', matriculados: '' };
+
+                        monthDaily[dateKey] = {
+                            ...existingDay,
+                            realized: cost
+                        };
+
+                        campDaily[monthKey] = monthDaily;
+                        camp.dailyData = campDaily;
+                        importedRecords++;
+                    });
+
+                    if (importedRecords > 0) {
+                        saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns);
+                        alert(`Sucesso! Importados ${importedRecords} registos de consumo via CSV para ${selectedProduct} (${selectedMonth}).`);
+                    } else {
+                        alert("Nenhum dado válido encontrado no ficheiro CSV. Verifique se o formato corresponde ao Google Ads ou Meta Ads.");
+                    }
+                    e.target.value = '';
+                };
+                reader.readAsText(file, 'UTF-8');
+            };
+
             const handleGeneratePacing = () => {
                 if (isReadOnly) return;
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
@@ -953,7 +1064,7 @@
 
                     {activeTab === "pacing" && (
                         <div className="space-y-6">
-                            {/* CONTROLES DE ESTRATÉGIA DE PACING E FILTROS */}
+                            {/* CONTROLES DE ESTRATÉGIA DE PACING, FILTROS E IMPORTAÇÃO CSV */}
                             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex flex-wrap items-center gap-4">
                                     <div>
@@ -999,12 +1110,18 @@
                                     </div>
                                 </div>
                                 {!isReadOnly && (
-                                    <button 
-                                        onClick={handleGeneratePacing}
-                                        className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition"
-                                    >
-                                        <Icon name="refresh" className="w-4 h-4" /> Gerar/Resetar Pacing
-                                    </button>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <label className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition cursor-pointer">
+                                            <Icon name="download" className="w-4 h-4 rotate-180" /> Importar CSV ({selectedProduct})
+                                            <input type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
+                                        </label>
+                                        <button 
+                                            onClick={handleGeneratePacing}
+                                            className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition"
+                                        >
+                                            <Icon name="refresh" className="w-4 h-4" /> Gerar/Resetar Pacing
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
