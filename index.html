@@ -407,7 +407,6 @@
                 return { totalBudget, totalSpent, totalPct, googleSpent, metaSpent, googlePct, metaPct, totalCpq, totalMatriculados, totalCpqGoal, totalMatriculadosGoal, cpqPct, matriculadosPct, avgCpqCost, avgCpaCost };
             }, [budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, selectedMonth]);
 
-            // PACING DINÂMICO ("VIVO") COM SUAVIZAÇÃO OPERACIONAL (EVITA ALTERAÇÕES DIÁRIAS BRUSCAS)
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDaysCount = daysInMonth.length || 30;
@@ -469,7 +468,6 @@
                     const daysRemaining = Math.max(1, totalDaysCount - idx);
                     const remainingBudget = Math.max(0, prodBudget - row.prevAccumulatedGlobal);
                     
-                    // Pacing suavizado / dinâmico operacional
                     const pacingIdeal = remainingBudget / daysRemaining;
                     const delta = row.realized - pacingIdeal;
 
@@ -499,7 +497,6 @@
                 });
             }, [pacingRows, pacingFilter]);
 
-            // Regra de verificação se campanha está sem input de planejado/realizado há mais de 5 dias
             const checkIsCampaignDeactivated = (camp) => {
                 const monthDaily = camp?.dailyData?.[selectedMonth];
                 if (!monthDaily || typeof monthDaily !== 'object') return true;
@@ -508,7 +505,6 @@
                 let consecutiveEmptyDays = 0;
                 let hasAnyActivity = false;
 
-                // Percorre do dia atual ou último dia para trás para verificar 5 dias vazios seguidos
                 for (let i = days.length - 1; i >= 0; i--) {
                     const dStr = days[i].dateStr;
                     const entry = monthDaily[dStr];
