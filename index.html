@@ -31,8 +31,12 @@
             appId: "1:116688559377:web:cb8b0a1e9450d23e9280b0",
             measurementId: "G-XPFMY99N"
         };
-        firebase.initializeApp(firebaseConfig);
-        window.db = firebase.firestore();
+        try {
+            firebase.initializeApp(firebaseConfig);
+            window.db = firebase.firestore();
+        } catch(e) {
+            console.warn("Firebase offline mode:", e);
+        }
     </script>
 
     <script type="text/babel">
@@ -159,6 +163,8 @@
             const [selectedProduct, setSelectedProduct] = useState("Pós-Graduação");
             const [selectedTool, setSelectedTool] = useState("Todas");
             const [pacingFilter, setPacingFilter] = useState("Todos");
+            const [compareMonthA, setCompareMonthA] = useState("2026-09");
+            const [compareMonthB, setCompareMonthB] = useState("2026-10");
 
             const [campaignMap, setCampaignMap] = useState(INITIAL_CAMPAIGN_MAP);
             const [newMapCampName, setNewMapCampName] = useState("");
@@ -264,7 +270,10 @@
             }, []);
 
             useEffect(() => {
-                if (!window.db) return;
+                if (!window.db) {
+                    setSyncStatus("Modo local (Offline)");
+                    return;
+                }
                 const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v3");
                 
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
@@ -284,14 +293,14 @@
                         }
 
                         if (data.campaignMap) setCampaignMap(prev => ({ ...prev, ...data.campaignMap }));
-                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
+                        setSyncStatus("Sincronizado com a nuvem");
                     } else {
                         docRef.set({ budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, campaignMap }).catch(() => {});
-                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
+                        setSyncStatus("Sincronizado com a nuvem");
                     }
                 }, (error) => {
                     console.error("Erro ao sincronizar:", error);
-                    setSyncStatus("Modo local (Offline - Protegido)");
+                    setSyncStatus("Modo local (Offline)");
                 });
 
                 return () => unsubscribe();
@@ -320,7 +329,7 @@
                         campaigns: c,
                         campaignMap: m
                     }, { merge: true }).then(() => {
-                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
+                        setSyncStatus("Sincronizado com a nuvem");
                     }).catch(() => {
                         setSyncStatus("Erro ao guardar");
                     });
@@ -930,7 +939,7 @@
                     aiMessage += `- CPQ Médio Projetado: ${formatBRL(runRateCpq > 0 ? runRateSpentFiltered / runRateCpq : 0)} (Meta: ${formatBRL(currentKPIs.targetCpqCost)})\n`;
                     aiMessage += `- CPA Médio Projetado: ${formatBRL(runRateMat > 0 ? runRateSpentFiltered / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpaCost)})\n\n`;
                     
-                    aiMessage += `Recomendação da IA: O pacing dinâmico mantém estabilidade sem saltos diários bruscos, garantindo absorção saudável de sobras e déficits anteriores.`;
+                    aiMessage += `Recomendação da IA: O pacing dinâmico mantém estabilidade operacional sem saltos diários bruscos.`;
 
                     setAiText(aiMessage);
                 }, 1000);
