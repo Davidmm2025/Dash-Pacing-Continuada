@@ -60,7 +60,7 @@
                 case 'pie-chart': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
                 case 'refresh': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>;
                 case 'lock': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-                case 'settings': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1.2 1.84l-1.57.7a2 2 0 0 1-2.11-.45l-.13-.13a2 2 0 0 0-2.83 0l-.31.31a2 2 0 0 0 0 2.83l.13.13a2 2 0 0 1 .45 2.11l-.7 1.57a2 2 0 0 1-1.84 1.2H4a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.2 1.84l.7 1.57a2 2 0 0 1 .45 2.11l-.13.13a2 2 0 0 0 0 2.83l.31.31a2 2 0 0 0 2.83 0l.13-.13a2 2 0 0 1 2.11-.45l1.57-.7a2 2 0 0 1 1.84 1.2V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1.2-1.84l1.57-.7a2 2 0 0 1 2.11.45l.13.13a2 2 0 0 0 2.83 0l.31-.31a2 2 0 0 0 0-2.83l-.13-.13a2 2 0 0 1-.45-2.11l.7-1.57a2 2 0 0 1 1.84-1.2H20a2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2h-.18a2 2 0 0 1-1.2-1.84l-.7-1.57a2 2 0 0 1-.45-2.11l.13-.13a2 2 0 0 0 0-2.83l-.31-.31a2 2 0 0 0-2.83 0l-.13.13a2 2 0 0 1-2.11.45l-1.57-.7A2 2 0 0 1 14 4.18V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
+                case 'settings': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1.2 1.84l-1.57.7a2 2 0 0 1-2.11-.45l-.13-.13a2 2 0 0 0-2.83 0l-.31.31a2 2 0 0 0 0 2.83l.13.13a2 2 0 0 1 .45 2.11l-.7 1.57a2 2 0 0 1-1.84 1.2H4a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.2 1.84l.7 1.57a2 2 0 0 1 .45 2.11l-.13.13a2 2 0 0 0 0 2.83l.31.31a2 2 0 0 0 2.83 0l.13-.13a2 2 0 0 1-2.11.45l1.57-.7A2 2 0 0 1 14 4.18V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
                 default: return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
             }
         };
@@ -281,7 +281,6 @@
                         if (data.goalsByMonth) setGoalsByMonth(prev => ({ ...prev, ...data.goalsByMonth }));
                         
                         if (Array.isArray(data.campaigns)) {
-                            // Limpa automaticamente as campanhas lixo ("Total") que duplicam valores, caso já estejam na base de dados
                             const validCampaigns = data.campaigns.filter(c => {
                                 if (!c || !c.name) return false;
                                 const n = c.name.toLowerCase();
@@ -409,53 +408,62 @@
                 return { totalBudget, totalSpent, totalPct, totalBalance, googleSpent, metaSpent, googlePct, metaPct, totalInscritos, totalMatriculados, totalInscritosGoal, totalMatriculadosGoal, inscritosPct, matriculadosPct, avgCpi, avgCpa };
             }, [budgetsByMonth, goalsByMonth, campaigns, selectedMonth]);
 
+            // LÓGICA CORRIGIDA DO PACING (Considera gasto Global para o Saldo Restante!)
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
-                const totalDays = daysInMonth.length;
-                const totalDaysCount = totalDays || 30;
+                const totalDaysCount = daysInMonth.length || 30;
 
-                let accumulated = 0;
+                const targetCampaigns = (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa");
+                const filteredCampaigns = targetCampaigns.filter(c => selectedTool === "Todas" || c.tool === selectedTool);
+                const shareRatio = targetCampaigns.length > 0 ? (filteredCampaigns.length / targetCampaigns.length) : 1;
+                
+                let accumulated = 0; // Acumulado do canal selecionado
+                let accumulatedGlobal = 0; // Acumulado de TODAS as ferramentas (para abater do budget)
                 let accumulatedInscritos = 0;
                 let accumulatedMatriculados = 0;
 
                 return daysInMonth.map((day) => {
-                    const defaultDayPlanned = prodBudget / totalDaysCount;
+                    const defaultDayPlanned = (prodBudget / totalDaysCount) * shareRatio;
 
                     let dayPlanned = 0;
                     let dayRealized = 0;
+                    let dayRealizedGlobal = 0;
                     let dayInscritos = 0;
                     let dayMatriculados = 0;
                     let hasCampaignData = false;
 
-                    (campaigns || [])
-                        .filter(c => c && c.product === selectedProduct && c.status === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool))
-                        .forEach(c => {
-                            const dEntry = c?.dailyData?.[selectedMonth]?.[day.dateStr];
-                            if (dEntry) {
+                    targetCampaigns.forEach(c => {
+                        const dEntry = c?.dailyData?.[selectedMonth]?.[day.dateStr];
+                        if (dEntry) {
+                            const r = Number(dEntry.realized) || 0;
+                            const p = Number(dEntry.planned) || 0;
+                            
+                            // Soma global independente do filtro para abater corretamente do saldo total
+                            dayRealizedGlobal += r;
+
+                            // Valores limitados pelo filtro da tela
+                            if (selectedTool === "Todas" || c.tool === selectedTool) {
                                 if (dEntry.planned !== undefined && dEntry.planned !== "") {
                                     hasCampaignData = true;
-                                    dayPlanned += Number(dEntry.planned) || 0;
+                                    dayPlanned += p;
                                 }
-                                if (dEntry.realized !== undefined && dEntry.realized !== "") {
-                                    dayRealized += Number(dEntry.realized) || 0;
-                                }
-                                if (dEntry.inscritos !== undefined && dEntry.inscritos !== "") {
-                                    dayInscritos += Number(dEntry.inscritos) || 0;
-                                }
-                                if (dEntry.matriculados !== undefined && dEntry.matriculados !== "") {
-                                    dayMatriculados += Number(dEntry.matriculados) || 0;
-                                }
+                                dayRealized += r;
+                                dayInscritos += Number(dEntry.inscritos) || 0;
+                                dayMatriculados += Number(dEntry.matriculados) || 0;
                             }
-                        });
+                        }
+                    });
 
                     const planned = hasCampaignData ? dayPlanned : defaultDayPlanned;
                     const realized = dayRealized;
 
                     accumulated += realized;
+                    accumulatedGlobal += dayRealizedGlobal;
                     accumulatedInscritos += dayInscritos;
                     accumulatedMatriculados += dayMatriculados;
 
-                    const balance = prodBudget - accumulated;
+                    // O Saldo Restante deve subtrair TODOS os gastos (Google + Meta) do Orçamento Global
+                    const balance = prodBudget - accumulatedGlobal; 
                     const delta = realized - planned;
 
                     let status = "Dentro do Pacing";
@@ -491,7 +499,6 @@
                 });
             }, [pacingRows, pacingFilter]);
 
-            // PARSER DE CSV MELHORADO (Deteta vírgulas e ponto-e-vírgula em planilhas brasileiras)
             const parseCSVLine = (text, separator = ',') => {
                 const result = [];
                 let insideQuotes = false;
@@ -540,13 +547,11 @@
                 return 'Pós-Graduação';
             };
 
-            // NORMALIZADOR DE NOMES (Evita que campanhas se dupliquem por diferenças de acento ou espaço)
             const cleanString = (str) => {
                 if (!str) return "";
                 return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
             };
 
-            // IMPORTAÇÃO DE CSV DEFINITIVA E SEGURA
             const handleUniversalCSVUpload = (e) => {
                 if (isReadOnly) return;
                 const files = e.target.files;
@@ -561,7 +566,6 @@
                         const lines = content.split(/\r?\n/);
                         if (lines.length < 2) return;
 
-                        // Deteta dinamicamente o separador e as colunas exatas da planilha
                         const firstLine = lines[0];
                         const sep = firstLine.includes(';') ? ';' : ',';
                         const headers = parseCSVLine(firstLine, sep).map(h => h.toLowerCase().trim());
@@ -582,7 +586,6 @@
 
                         const fileAggregates = {};
 
-                        // Começa da linha 1 (ignora cabeçalho)
                         for (let i = 1; i < lines.length; i++) {
                             const line = lines[i];
                             if (!line.trim()) continue;
@@ -593,17 +596,14 @@
                             if (!campName) continue;
                             const lowerName = campName.toLowerCase();
                             
-                            // BLOQUEIO RIGOROSO DE LINHAS DE TOTAL (FATOR CAUSADOR DA DUPLICAÇÃO)
                             if (lowerName.includes('total') || lowerName.includes('resultados') || lowerName.includes('results') || lowerName.includes('campanha') || lowerName.includes('nome da')) {
                                 continue;
                             }
 
-                            // Extrai Data
                             let dateStrCsv = "";
                             if (dateCol !== -1 && cols[dateCol]) {
                                 dateStrCsv = cols[dateCol];
                             } else {
-                                // Procura dinâmica de data se a coluna não for encontrada
                                 for (let j = 0; j < cols.length; j++) {
                                     const val = cols[j];
                                     if (/^\d{4}-\d{2}-\d{2}$/.test(val) || /^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
@@ -622,18 +622,16 @@
                                 month = parts[1];
                                 year = parts[2];
                             } else {
-                                continue; // Se não tem data, pula a linha.
+                                continue;
                             }
 
                             const monthKey = `${year}-${month}`;
                             const dateKey = `${day}/${month}`; 
 
-                            // Extrai Custo com precisão total
                             let cost = 0;
                             if (costCol !== -1 && cols[costCol]) {
                                 cost = parseCost(cols[costCol]);
                             } else {
-                                // Fallback dinâmico para custo, pegando o último valor numérico válido à direita
                                 for (let j = cols.length - 1; j >= 1; j--) {
                                     const parsed = parseCost(cols[j]);
                                     if (!isNaN(parsed) && parsed > 0) {
@@ -647,7 +645,6 @@
                             let toolType = campName.toUpperCase().includes('FB') ? 'Meta Ads' : 'Google Ads';
                             const targetProduct = resolveProductForCampaign(campName);
 
-                            // Prepara o agregador seguro por ficheiro (agrupa AdSets múltiplos no mesmo dia, sem duplicar o histórico antigo)
                             if (!fileAggregates[campName]) {
                                 fileAggregates[campName] = { product: targetProduct, tool: toolType, months: {} };
                             }
@@ -659,11 +656,9 @@
 
                         let importedTotal = 0;
 
-                        // Aplica os valores na base de dados
                         Object.entries(fileAggregates).forEach(([campName, campData]) => {
                             const { product, tool, months } = campData;
 
-                            // Identificação exata da campanha (ignora espaços extras ou maiúsculas/minúsculas para evitar duplicar na lista de campanhas)
                             let camp = updatedCampaigns.find(c => c && cleanString(c.name) === cleanString(campName));
                             
                             if (!camp) {
@@ -677,7 +672,6 @@
                                 };
                                 updatedCampaigns.push(camp);
                             } else {
-                                // Ajusta automaticamente a ferramenta se for identificada melhor
                                 camp.tool = tool;
                             }
 
@@ -690,7 +684,7 @@
                                     const existingDay = monthDaily[dateKey] || { planned: '', realized: 0, inscritos: '', matriculados: '' };
                                     monthDaily[dateKey] = {
                                         ...existingDay,
-                                        realized: totalCost // AQUI É A CHAVE: Ele sobrescreve o valor do dia, não acumula sobre o anterior
+                                        realized: totalCost 
                                     };
                                     importedTotal++;
                                 });
@@ -701,7 +695,6 @@
                             camp.dailyData = campDaily;
                         });
 
-                        // Limpeza extra de segurança antes de guardar
                         updatedCampaigns = updatedCampaigns.filter(c => {
                             if (!c || !c.name) return false;
                             const n = c.name.toLowerCase();
@@ -770,8 +763,22 @@
                 saveDataToCloud(updatedBudgets, updatedGoals, campaigns, campaignMap);
             };
 
+            // KPIs CORRIGIDOS PARA DEDUZIR GLOBALMENTE NO SALDO
             const currentKPIs = useMemo(() => {
                 const budget = Number(currentMonthBudgets[selectedProduct]) || 0;
+                
+                // 1. Calcula o Total Gasto GLOBALMENTE no produto (soma de Google + Meta)
+                let globalRealized = 0;
+                (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa").forEach(c => {
+                    const monthDaily = c?.dailyData?.[selectedMonth];
+                    if (monthDaily && typeof monthDaily === 'object') {
+                        Object.values(monthDaily).forEach(d => {
+                            globalRealized += Number(d?.realized) || 0;
+                        });
+                    }
+                });
+
+                // 2. Calcula os valores da Ferramenta Filtrada 
                 const totalRealized = (pacingRows || []).reduce((acc, r) => acc + (r.realized || 0), 0);
                 const totalInscritos = (pacingRows || []).reduce((acc, r) => acc + (r.inscritos || 0), 0);
                 const totalMatriculados = (pacingRows || []).reduce((acc, r) => acc + (r.matriculados || 0), 0);
@@ -788,7 +795,9 @@
                 const targetCpi = inscritosGoal > 0 ? budget / inscritosGoal : 0;
                 const targetCpa = matriculadosGoal > 0 ? budget / matriculadosGoal : 0;
 
-                const balance = budget - totalRealized;
+                // 3. Saldo Restante deve abater sempre o gasto GLOBAL, não só da ferramenta selecionada
+                const balance = budget - globalRealized; 
+                
                 const pastDays = (pacingRows || []).filter(r => r.isPast);
                 const lastPast = pastDays[pastDays.length - 1] || pacingRows[0];
                 const futureDaysCount = (pacingRows || []).filter(r => !r.isPast && !r.isToday).length || 1;
@@ -796,8 +805,9 @@
 
                 return {
                     budget,
-                    totalRealized,
-                    balance,
+                    globalRealized,
+                    totalRealized, // Filtrado
+                    balance, // Global
                     totalInscritos,
                     totalMatriculados,
                     inscritosGoal,
@@ -812,7 +822,7 @@
                     lastDayStatus: lastPast?.status || "Normal",
                     suggestedPacing
                 };
-            }, [selectedProduct, currentMonthBudgets, currentMonthGoals, pacingRows]);
+            }, [selectedProduct, currentMonthBudgets, currentMonthGoals, pacingRows, campaigns, selectedMonth]);
 
             const getMonthStatsForComparison = (monthKey) => {
                 let mBudget = 0;
@@ -871,11 +881,28 @@
                 setTimeout(() => {
                     const pastDays = (pacingRows || []).filter(r => r.isPast).length || 1;
                     const totalDays = (pacingRows || []).length || 30;
-                    const runRateSpent = (currentKPIs.totalRealized / pastDays) * totalDays;
+                    
+                    const globalRunRateSpent = (currentKPIs.globalRealized / pastDays) * totalDays;
+                    const runRateSpentFiltered = (currentKPIs.totalRealized / pastDays) * totalDays;
                     const runRateIns = (currentKPIs.totalInscritos / pastDays) * totalDays;
                     const runRateMat = (currentKPIs.totalMatriculados / pastDays) * totalDays;
 
-                    setAiText(`🤖 Projeção Inteligente de Fechamento de Mês (${selectedProduct} - ${selectedMonth}):\n\n- Orçamento Disponível: ${formatBRL(currentKPIs.budget)}\n- Consumo Projetado (Run-Rate): ${formatBRL(runRateSpent)}\n- Inscritos Projetados: ${formatNum(runRateIns)} (Meta: ${formatNum(currentKPIs.inscritosGoal)})\n- Matriculados Projetados: ${formatNum(runRateMat)} (Meta: ${formatNum(currentKPIs.matriculadosGoal)})\n- CPI Projetado: ${formatBRL(runRateIns > 0 ? runRateSpent / runRateIns : 0)} (Meta: ${formatBRL(currentKPIs.targetCpi)})\n- CPA Projetado: ${formatBRL(runRateMat > 0 ? runRateSpent / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpa)})\n\nRecomendação da IA: O ritmo atual indica ${runRateSpent > currentKPIs.budget ? 'estouro de orçamento projetado' : 'bom controle orçamentário'}. Ajuste o pacing diário para ${formatBRL(currentKPIs.suggestedPacing)} para atingir as metas de conversão.`);
+                    let aiMessage = `🤖 Projeção Inteligente de Fechamento de Mês (${selectedProduct} - ${selectedMonth}):\n\n`;
+                    aiMessage += `- Orçamento Disponível (Global): ${formatBRL(currentKPIs.budget)}\n`;
+                    aiMessage += `- Consumo Projetado Global (Run-Rate): ${formatBRL(globalRunRateSpent)}\n`;
+                    
+                    if (selectedTool !== "Todas") {
+                        aiMessage += `- Consumo Projetado (${selectedTool}): ${formatBRL(runRateSpentFiltered)}\n`;
+                    }
+                    
+                    aiMessage += `- Inscritos Projetados ${selectedTool !== 'Todas' ? `(${selectedTool})` : ''}: ${formatNum(runRateIns)} (Meta Global: ${formatNum(currentKPIs.inscritosGoal)})\n`;
+                    aiMessage += `- Matriculados Projetados ${selectedTool !== 'Todas' ? `(${selectedTool})` : ''}: ${formatNum(runRateMat)} (Meta Global: ${formatNum(currentKPIs.matriculadosGoal)})\n`;
+                    aiMessage += `- CPI Projetado: ${formatBRL(runRateIns > 0 ? runRateSpentFiltered / runRateIns : 0)} (Meta: ${formatBRL(currentKPIs.targetCpi)})\n`;
+                    aiMessage += `- CPA Projetado: ${formatBRL(runRateMat > 0 ? runRateSpentFiltered / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpa)})\n\n`;
+                    
+                    aiMessage += `Recomendação da IA: O ritmo de gasto GLOBAL atual indica ${globalRunRateSpent > currentKPIs.budget ? 'estouro de orçamento projetado' : 'bom controle orçamentário'}. Ajuste o pacing diário global para ${formatBRL(currentKPIs.suggestedPacing)} para atingir as metas em segurança.`;
+
+                    setAiText(aiMessage);
                 }, 1000);
             };
 
@@ -1377,7 +1404,7 @@
                             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="text-xs font-semibold text-slate-500 uppercase">Orçamento BAU ({selectedProduct})</label>
+                                        <label className="text-xs font-semibold text-slate-500 uppercase">Orçamento BAU (Global: {selectedProduct})</label>
                                         <input 
                                             type="number" 
                                             disabled={isReadOnly}
@@ -1412,11 +1439,15 @@
                             {/* KPI CARDS DE GASTO, CONVERSÃO, CPI E CPA */}
                             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">Consumo Realizado</span>
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase flex items-center flex-wrap gap-1">
+                                        Consumo Realizado {selectedTool !== 'Todas' && <span className="text-blue-600">({selectedTool})</span>}
+                                    </span>
                                     <p className="text-lg font-bold text-blue-700 mt-1">{formatBRL(currentKPIs.totalRealized)}</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">Saldo Restante</span>
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase flex items-center flex-wrap gap-1">
+                                        Saldo Restante {selectedTool !== 'Todas' && <span className="text-emerald-600">(Global)</span>}
+                                    </span>
                                     <p className="text-lg font-bold text-emerald-600 mt-1">{formatBRL(currentKPIs.balance)}</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
@@ -1451,8 +1482,8 @@
                                                 <th className="px-4 py-3">Meta Planejada (R$)</th>
                                                 <th className="px-4 py-3">Realizado (R$)</th>
                                                 <th className="px-4 py-3">Delta</th>
-                                                <th className="px-4 py-3">Acumulado</th>
-                                                <th className="px-4 py-3">Saldo</th>
+                                                <th className="px-4 py-3">Acumulado {selectedTool !== 'Todas' ? `(${selectedTool})` : ''}</th>
+                                                <th className="px-4 py-3">Saldo {selectedTool !== 'Todas' ? '(Global)' : ''}</th>
                                                 <th className="px-4 py-3">Inscritos (Dia / Acum)</th>
                                                 <th className="px-4 py-3">Matriculados (Dia / Acum)</th>
                                                 <th className="px-4 py-3">Status</th>
@@ -1472,7 +1503,7 @@
                                                             {row.delta > 0 ? `+${formatBRL(row.delta)}` : formatBRL(row.delta)}
                                                         </td>
                                                         <td className="px-4 py-3 text-slate-900">{formatBRL(row.accumulated)}</td>
-                                                        <td className="px-4 py-3 text-emerald-600">{formatBRL(row.balance)}</td>
+                                                        <td className="px-4 py-3 font-bold text-emerald-600">{formatBRL(row.balance)}</td>
                                                         <td className="px-4 py-3 font-medium text-slate-800">
                                                             {row.inscritos} <span className="text-xs text-slate-400 font-normal">({row.accumulatedInscritos})</span>
                                                         </td>
