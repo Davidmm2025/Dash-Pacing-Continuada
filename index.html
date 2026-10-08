@@ -186,7 +186,7 @@
 
             const [monthlyGridData, setMonthlyGridData] = useState({});
             const [campaigns, setCampaigns] = useState([]);
-            const [recalcTriggers, recalcTriggersSet] = useState({}); // Armazena a semana/terça da readequação de pacing por produto/mês
+            const [recalcTriggers, recalcTriggersSet] = useState({});
 
             const [isAiModalOpen, setIsAiModalOpen] = useState(false);
             const [aiText, setAiText] = useState("");
@@ -245,7 +245,7 @@
                         weekday: weekdays[d.getDay()],
                         weekNum: `Semana ${weekNum}`,
                         isWeekend: d.getDay() === 0 || d.getDay() === 6,
-                        isTuesday: d.getDay() === 2, // Terça-feira
+                        isTuesday: d.getDay() === 2,
                         isPast: d < new Date(now.getFullYear(), now.getMonth(), now.getDate()),
                         isToday: d.toDateString() === now.toDateString()
                     });
@@ -263,7 +263,8 @@
 
             useEffect(() => {
                 if (!window.db) return;
-                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v4");
+                // CHAVE ANTIGA RESTAURADA: main_state_multi_month_v3
+                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v3");
                 
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
                     if (docSnap && docSnap.exists) {
@@ -314,7 +315,8 @@
 
                 if (window.db) {
                     setSyncStatus("A guardar...");
-                    window.db.collection("dash_data").doc("main_state_multi_month_v4").set({
+                    // CHAVE ANTIGA RESTAURADA: main_state_multi_month_v3
+                    window.db.collection("dash_data").doc("main_state_multi_month_v3").set({
                         budgetsByMonth: b,
                         goalsByMonth: g,
                         monthlyGridData: gr,
@@ -417,7 +419,6 @@
 
                 const targetCampaigns = (campaigns || []).filter(c => c && c.product === selectedProduct && (c.status || "Ativa") === "Ativa");
 
-                // Identificar se há gatilho de recálculo guardado para este mês/produto
                 const triggerKey = `${selectedMonth}_${selectedProduct}`;
                 const recalcTuesdayIndex = recalcTriggers[triggerKey] ?? -1;
 
@@ -425,7 +426,6 @@
                 let accumulatedRealizedBeforeTuesday = 0;
                 let daysCountFromTuesdayOnward = 0;
 
-                // 1ª Passagem: Calcular realizados e computar o acumulado até a terça do gatilho
                 daysInMonth.forEach((day, idx) => {
                     let dayRealized = 0;
                     let dayRealizedGlobal = 0;
@@ -451,7 +451,6 @@
                     }
                 });
 
-                // Se houver recálculo a partir da terça, redistribuir o saldo restante pelos dias restantes a partir da terça
                 let adjustedPlannedFromTuesday = defaultPlanned;
                 if (recalcTuesdayIndex !== -1 && daysCountFromTuesdayOnward > 0) {
                     const remainingBudget = prodBudget - accumulatedRealizedBeforeTuesday;
@@ -469,9 +468,9 @@
                     let plannedVal = defaultPlanned;
                     if (recalcTuesdayIndex !== -1) {
                         if (idx < recalcTuesdayIndex) {
-                            plannedVal = defaultPlanned; // Mantém intacto antes da terça
+                            plannedVal = defaultPlanned;
                         } else {
-                            plannedVal = adjustedPlannedFromTuesday; // Recalcula a partir da terça
+                            plannedVal = adjustedPlannedFromTuesday;
                         }
                     }
 
@@ -487,8 +486,7 @@
                     accumulatedCpq += dayCpq;
                     accumulatedMatriculados += dayMatriculados;
 
-                    // DIFERENÇA: Valores de sobra são positivos (+) e gastos a mais são negativos (-)
-                    // Diferença = Planejado - Realizado (se Planejado > Realizado, sobra positiva. Se Realizado > Planejado, estouro negativo)
+                    // DIFERENÇA: Sobra positiva (+), gasto a mais negativo (-)
                     const diferenca = plannedVal - dayRealized;
                     const dayCpqCost = dayCpq > 0 ? dayRealized / dayCpq : 0;
                     const dayCpaCost = dayMatriculados > 0 ? dayRealized / dayMatriculados : 0;
@@ -503,7 +501,7 @@
                     return {
                         ...row,
                         realized: dayRealized,
-                        pacingIdeal: plannedVal, // Mantém compatibilidade de variável interna
+                        pacingIdeal: plannedVal,
                         diferenca,
                         accumulated,
                         cpqVal: dayCpq,
@@ -782,17 +780,13 @@
             const handleGeneratePacing = () => {
                 if (isReadOnly) return;
 
-                // Encontrar a última terça-feira (ou a terça da semana vigente)
                 let targetTuesdayIndex = -1;
                 daysInMonth.forEach((d, idx) => {
                     if (d.isTuesday) {
-                        const dObj = new Date(d.dateStr.split('/').reverse().join('-') + `-${selectedMonth.split('-')[0]}`);
-                        // Se for hoje ou anterior na semana vigente, marca
                         targetTuesdayIndex = idx;
                     }
                 });
 
-                // Se houver uma terça válida no mês até hoje, guarda o gatilho para recalcular a partir dela sem mexer no passado
                 if (targetTuesdayIndex !== -1) {
                     const triggerKey = `${selectedMonth}_${selectedProduct}`;
                     const updatedTriggers = { ...recalcTriggers, [triggerKey]: targetTuesdayIndex };
@@ -1494,7 +1488,6 @@
                                         </thead>
                                         <tbody className="divide-y divide-slate-200">
                                             {filteredPacingRows.map((row) => {
-                                                // Valores de sobra são positivos (verde), gasto a mais são negativos (vermelho)
                                                 const isSobra = row.diferenca >= 0;
                                                 return (
                                                     <tr key={row.dateStr} className={`hover:bg-slate-50 ${row.isTuesday ? 'bg-amber-50/50' : ''} ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
