@@ -60,7 +60,7 @@
                 case 'pie-chart': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
                 case 'refresh': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>;
                 case 'lock': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-                case 'settings': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1.2 1.84l-1.57.7a2 2 0 0 1-2.11-.45l-.13-.13a2 2 0 0 0-2.83 0l-.31.31a2 2 0 0 0 0 2.83l.13.13a2 2 0 0 1 .45 2.11l-.7 1.57a2 2 0 0 1-1.84 1.2H4a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.2 1.84l.7 1.57a2 2 0 0 1 .45 2.11l-.13.13a2 2 0 0 0 0 2.83l.31.31a2 2 0 0 0 2.83 0l.13-.13a2 2 0 0 1-2.11.45l1.57-.7A2 2 0 0 1 14 4.18V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
+                case 'settings': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1.2 1.84l-1.57.7a2 2 0 0 1-2.11-.45l-.13-.13a2 2 0 0 0-2.83 0l-.31.31a2 2 0 0 0 0 2.83l.13.13a2 2 0 0 1 .45 2.11l-.7 1.57a2 2 0 0 1-1.84 1.2H4a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.2 1.84l.7 1.57a2 2 0 0 1 .45 2.11l-.13.13a2 2 0 0 0 0 2.83l.31.31a2 2 0 0 0 2.83 0l.13-.13a2 2 0 0 1 2.11-.45l1.57-.7a2 2 0 0 1 1.84 1.2V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1.2-1.84l1.57-.7a2 2 0 0 1 2.11.45l.13.13a2 2 0 0 0 2.83 0l.31-.31a2 2 0 0 0 0-2.83l-.13-.13a2 2 0 0 1-.45-2.11l.7-1.57a2 2 0 0 1 1.84-1.2H20a2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2h-.18a2 2 0 0 1-1.2-1.84l-.7-1.57a2 2 0 0 1-.45-2.11l.13-.13a2 2 0 0 0 0-2.83l-.31-.31a2 2 0 0 0-2.83 0l-.13.13a2 2 0 0 1-2.11.45l-1.57-.7A2 2 0 0 1 14 4.18V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
                 default: return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
             }
         };
@@ -211,6 +211,10 @@
             const [isShareModalOpen, setIsShareModalOpen] = useState(false);
             const [syncStatus, setSyncStatus] = useState("A carregar nuvem...");
             const [campaignPacingModal, setCampaignPacingModal] = useState(null);
+
+            const [batchStartDay, setBatchStartDay] = useState(1);
+            const [batchEndDay, setBatchEndDay] = useState(10);
+            const [batchPlannedValue, setBatchPlannedValue] = useState("");
 
             const isReadOnly = currentUser?.role === 'readonly';
 
@@ -408,45 +412,40 @@
                 return { totalBudget, totalSpent, totalPct, totalBalance, googleSpent, metaSpent, googlePct, metaPct, totalInscritos, totalMatriculados, totalInscritosGoal, totalMatriculadosGoal, inscritosPct, matriculadosPct, avgCpi, avgCpa };
             }, [budgetsByMonth, goalsByMonth, campaigns, selectedMonth]);
 
-            // LÓGICA CORRIGIDA DO PACING (Considera gasto Global para o Saldo Restante!)
+            // PACING ROWS COM META IDEAL E INVESTIMENTO EM FERRAMENTA
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDaysCount = daysInMonth.length || 30;
 
                 const targetCampaigns = (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa");
                 const filteredCampaigns = targetCampaigns.filter(c => selectedTool === "Todas" || c.tool === selectedTool);
-                const shareRatio = targetCampaigns.length > 0 ? (filteredCampaigns.length / targetCampaigns.length) : 1;
                 
-                let accumulated = 0; // Acumulado do canal selecionado
-                let accumulatedGlobal = 0; // Acumulado de TODAS as ferramentas (para abater do budget)
+                let accumulated = 0;
+                let accumulatedGlobal = 0;
                 let accumulatedInscritos = 0;
                 let accumulatedMatriculados = 0;
 
                 return daysInMonth.map((day) => {
-                    const defaultDayPlanned = (prodBudget / totalDaysCount) * shareRatio;
+                    // Meta Ideal gerada pela IA (divisão equilibrada do orçamento BAU pelo total de dias)
+                    const metaIdeal = prodBudget / totalDaysCount;
 
-                    let dayPlanned = 0;
+                    let toolInvestimento = 0;
                     let dayRealized = 0;
                     let dayRealizedGlobal = 0;
                     let dayInscritos = 0;
                     let dayMatriculados = 0;
-                    let hasCampaignData = false;
 
                     targetCampaigns.forEach(c => {
                         const dEntry = c?.dailyData?.[selectedMonth]?.[day.dateStr];
                         if (dEntry) {
                             const r = Number(dEntry.realized) || 0;
-                            const p = Number(dEntry.planned) || 0;
+                            const p = Number(dEntry.planned) || 0; // Planejado individual da campanha
                             
-                            // Soma global independente do filtro para abater corretamente do saldo total
                             dayRealizedGlobal += r;
 
-                            // Valores limitados pelo filtro da tela
+                            // Soma o investimento setado na ferramenta (respeitando filtro)
                             if (selectedTool === "Todas" || c.tool === selectedTool) {
-                                if (dEntry.planned !== undefined && dEntry.planned !== "") {
-                                    hasCampaignData = true;
-                                    dayPlanned += p;
-                                }
+                                toolInvestimento += p > 0 ? p : 0;
                                 dayRealized += r;
                                 dayInscritos += Number(dEntry.inscritos) || 0;
                                 dayMatriculados += Number(dEntry.matriculados) || 0;
@@ -454,29 +453,26 @@
                         }
                     });
 
-                    const planned = hasCampaignData ? dayPlanned : defaultDayPlanned;
-                    const realized = dayRealized;
-
-                    accumulated += realized;
+                    accumulated += dayRealized;
                     accumulatedGlobal += dayRealizedGlobal;
                     accumulatedInscritos += dayInscritos;
                     accumulatedMatriculados += dayMatriculados;
 
-                    // O Saldo Restante deve subtrair TODOS os gastos (Google + Meta) do Orçamento Global
                     const balance = prodBudget - accumulatedGlobal; 
-                    const delta = realized - planned;
+                    const delta = dayRealized - metaIdeal;
 
                     let status = "Dentro do Pacing";
-                    if (realized > planned) {
+                    if (dayRealized > metaIdeal) {
                         status = "Overbudget";
-                    } else if (realized < planned) {
+                    } else if (dayRealized < metaIdeal) {
                         status = "Underbudget";
                     }
 
                     return { 
                         ...day, 
-                        planned, 
-                        realized, 
+                        metaIdeal,
+                        toolInvestimento,
+                        realized: dayRealized, 
                         delta, 
                         accumulated, 
                         balance, 
@@ -711,39 +707,9 @@
 
             const handleGeneratePacing = () => {
                 if (isReadOnly) return;
-                const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
-                const totalDays = daysInMonth.length;
-                const defaultDayPlanned = prodBudget / totalDays;
-
-                const targetCampaigns = (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa");
-                if (targetCampaigns.length === 0) {
-                    alert("Não existem campanhas ativas para este produto para aplicar o pacing.");
-                    return;
-                }
-
-                const updatedCampaigns = (campaigns || []).map(camp => {
-                    if (camp && camp.product === selectedProduct && camp.status === "Ativa") {
-                        const campDaily = { ...(camp.dailyData || {}) };
-                        const monthDaily = { ...(campDaily[selectedMonth] || {}) };
-                        const share = 1 / targetCampaigns.length;
-
-                        daysInMonth.forEach((day) => {
-                            const dayPlanned = defaultDayPlanned * share;
-                            const existing = monthDaily[day.dateStr] || {};
-                            monthDaily[day.dateStr] = {
-                                ...existing,
-                                planned: Math.round(dayPlanned * 100) / 100
-                            };
-                        });
-
-                        campDaily[selectedMonth] = monthDaily;
-                        return { ...camp, dailyData: campDaily };
-                    }
-                    return camp;
-                });
-
-                saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns, campaignMap);
-                alert("Pacing gerado/resetado com sucesso para " + selectedProduct + "!");
+                // O botão Gerar Pacing apenas define a Meta Ideal da IA (calculada automaticamente pelo Orçamento BAU / Dias)
+                // Não afeta as demais colunas nem o planejado individual das campanhas.
+                alert("Meta Ideal recalculada com sucesso pela IA para " + selectedProduct + "!");
             };
 
             const updateBudgetAndGoalsForProduct = (prodName, newBudget, newInscritos, newMatriculados) => {
@@ -763,11 +729,9 @@
                 saveDataToCloud(updatedBudgets, updatedGoals, campaigns, campaignMap);
             };
 
-            // KPIs CORRIGIDOS PARA DEDUZIR GLOBALMENTE NO SALDO
             const currentKPIs = useMemo(() => {
                 const budget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 
-                // 1. Calcula o Total Gasto GLOBALMENTE no produto (soma de Google + Meta)
                 let globalRealized = 0;
                 (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa").forEach(c => {
                     const monthDaily = c?.dailyData?.[selectedMonth];
@@ -778,7 +742,6 @@
                     }
                 });
 
-                // 2. Calcula os valores da Ferramenta Filtrada 
                 const totalRealized = (pacingRows || []).reduce((acc, r) => acc + (r.realized || 0), 0);
                 const totalInscritos = (pacingRows || []).reduce((acc, r) => acc + (r.inscritos || 0), 0);
                 const totalMatriculados = (pacingRows || []).reduce((acc, r) => acc + (r.matriculados || 0), 0);
@@ -795,7 +758,6 @@
                 const targetCpi = inscritosGoal > 0 ? budget / inscritosGoal : 0;
                 const targetCpa = matriculadosGoal > 0 ? budget / matriculadosGoal : 0;
 
-                // 3. Saldo Restante deve abater sempre o gasto GLOBAL, não só da ferramenta selecionada
                 const balance = budget - globalRealized; 
                 
                 const pastDays = (pacingRows || []).filter(r => r.isPast);
@@ -806,8 +768,8 @@
                 return {
                     budget,
                     globalRealized,
-                    totalRealized, // Filtrado
-                    balance, // Global
+                    totalRealized,
+                    balance,
                     totalInscritos,
                     totalMatriculados,
                     inscritosGoal,
@@ -906,7 +868,6 @@
                 }, 1000);
             };
 
-            // TELA DE LOGIN OBRIGATÓRIA
             if (!currentUser) {
                 return (
                     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
@@ -963,7 +924,6 @@
 
             return (
                 <div className="max-w-7xl mx-auto px-4 py-6">
-                    {/* TOPO: IDENTIDADE UNICESUMAR */}
                     <div className="bg-unicesumar text-white rounded-2xl p-5 shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
                             <div className="flex items-center gap-2">
@@ -1024,7 +984,6 @@
                         </div>
                     </header>
 
-                    {/* ABAS SUPERIORES ALINHADAS E ORGANIZADAS */}
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-6 bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm">
                         <div className="flex flex-wrap items-center gap-2">
                             <button
@@ -1088,7 +1047,6 @@
                         </div>
                     )}
 
-                    {/* ABA DE MAPEAMENTO DE CAMPANHAS */}
                     {activeTab === "mapping" && (
                         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4">
@@ -1176,7 +1134,6 @@
                         </div>
                     )}
 
-                    {/* VISÃO GERAL COM GRÁFICOS */}
                     {activeTab === "overview" && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1207,7 +1164,6 @@
                                 </div>
                             </div>
 
-                            {/* GRÁFICOS VISUAIS NO RESUMO EXECUTIVO */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                                     <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -1269,7 +1225,6 @@
                         </div>
                     )}
 
-                    {/* COMPARATIVO DE MESES & METAS */}
                     {activeTab === "comparison" && (
                         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
                             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2.5">
@@ -1368,7 +1323,6 @@
 
                     {activeTab === "pacing" && (
                         <div className="space-y-6">
-                            {/* CONTROLES DE FILTRO E GERAÇÃO DE PACING */}
                             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex flex-wrap items-center gap-4">
                                     <div>
@@ -1400,7 +1354,6 @@
                                 )}
                             </div>
 
-                            {/* CONFIGURAÇÃO DE ORÇAMENTO E METAS DO PRODUTO */}
                             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
@@ -1436,7 +1389,6 @@
                                 </div>
                             </div>
 
-                            {/* KPI CARDS DE GASTO, CONVERSÃO, CPI E CPA */}
                             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                     <span className="text-[11px] font-semibold text-slate-500 uppercase flex items-center flex-wrap gap-1">
@@ -1470,7 +1422,7 @@
                                 </div>
                             </div>
 
-                            {/* TABELA DE PACING COM CORREÇÃO RIGOROSA: MAIOR QUE PLANEJADO = OVERBUDGET (VERMELHO) */}
+                            {/* TABELA DE PACING ATUALIZADA: META IDEAL & INVESTIMENTO EM FERRAMENTA */}
                             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm text-slate-700">
@@ -1479,7 +1431,8 @@
                                                 <th className="px-4 py-3">Data</th>
                                                 <th className="px-4 py-3">Dia</th>
                                                 <th className="px-4 py-3">Semana</th>
-                                                <th className="px-4 py-3">Meta Planejada (R$)</th>
+                                                <th className="px-4 py-3">Meta Ideal (R$)</th>
+                                                <th className="px-4 py-3">Investimento em Ferramenta (R$)</th>
                                                 <th className="px-4 py-3">Realizado (R$)</th>
                                                 <th className="px-4 py-3">Delta</th>
                                                 <th className="px-4 py-3">Acumulado {selectedTool !== 'Todas' ? `(${selectedTool})` : ''}</th>
@@ -1491,13 +1444,14 @@
                                         </thead>
                                         <tbody className="divide-y divide-slate-200">
                                             {filteredPacingRows.map((row) => {
-                                                const isOver = row.realized > row.planned;
+                                                const isOver = row.realized > row.metaIdeal;
                                                 return (
                                                     <tr key={row.dateStr} className={`hover:bg-slate-50 ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
                                                         <td className="px-4 py-3 text-slate-900">{row.dateStr}</td>
                                                         <td className="px-4 py-3 text-slate-500">{row.weekday}</td>
                                                         <td className="px-4 py-3 text-slate-400 text-xs">{row.weekNum}</td>
-                                                        <td className="px-4 py-3">{formatBRL(row.planned)}</td>
+                                                        <td className="px-4 py-3 text-purple-700 font-semibold">{formatBRL(row.metaIdeal)}</td>
+                                                        <td className="px-4 py-3 font-semibold text-slate-800">{formatBRL(row.toolInvestimento)}</td>
                                                         <td className="px-4 py-3 font-semibold text-blue-700">{formatBRL(row.realized)}</td>
                                                         <td className={`px-4 py-3 font-bold ${isOver ? 'text-red-600' : 'text-emerald-600'}`}>
                                                             {row.delta > 0 ? `+${formatBRL(row.delta)}` : formatBRL(row.delta)}
@@ -1645,6 +1599,68 @@
                                     </div>
                                     <button onClick={() => setCampaignPacingModal(null)} className="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
                                 </div>
+
+                                {!isReadOnly && (
+                                    <div className="bg-blue-50/70 border border-blue-200 p-3.5 rounded-xl mb-4 flex flex-wrap items-center justify-between gap-3">
+                                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
+                                            <span>Preencher Planejado em Lote:</span>
+                                            <span>Do dia</span>
+                                            <input 
+                                                type="number" 
+                                                min="1" 
+                                                max="31" 
+                                                value={batchStartDay} 
+                                                onChange={(e) => setBatchStartDay(Number(e.target.value))}
+                                                className="w-16 bg-white border border-slate-300 rounded px-2 py-1 text-center font-bold text-slate-900"
+                                            />
+                                            <span>ao dia</span>
+                                            <input 
+                                                type="number" 
+                                                min="1" 
+                                                max="31" 
+                                                value={batchEndDay} 
+                                                onChange={(e) => setBatchEndDay(Number(e.target.value))}
+                                                className="w-16 bg-white border border-slate-300 rounded px-2 py-1 text-center font-bold text-slate-900"
+                                            />
+                                            <span>com R$</span>
+                                            <input 
+                                                type="number" 
+                                                placeholder="Ex: 1200" 
+                                                value={batchPlannedValue} 
+                                                onChange={(e) => setBatchPlannedValue(e.target.value)}
+                                                className="w-24 bg-white border border-slate-300 rounded px-2 py-1 font-bold text-blue-700"
+                                            />
+                                        </div>
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                if (batchPlannedValue === "" || isNaN(Number(batchPlannedValue))) {
+                                                    alert("Por favor, digite um valor válido para aplicar no lote.");
+                                                    return;
+                                                }
+                                                const monthDaily = (campaignPacingModal.dailyData && campaignPacingModal.dailyData[selectedMonth]) || {};
+                                                const updatedMonthDaily = { ...monthDaily };
+
+                                                daysInMonth.forEach(day => {
+                                                    if (day.dateNum >= batchStartDay && day.dateNum <= batchEndDay) {
+                                                        const currentDaily = updatedMonthDaily[day.dateStr] || { planned: '', realized: '', inscritos: '', matriculados: '' };
+                                                        updatedMonthDaily[day.dateStr] = {
+                                                            ...currentDaily,
+                                                            planned: Number(batchPlannedValue)
+                                                        };
+                                                    }
+                                                });
+
+                                                const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
+                                                setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
+                                                alert(`Planejado atualizado com sucesso do dia ${batchStartDay} ao dia ${batchEndDay}!`);
+                                            }}
+                                            className="bg-blue-700 hover:bg-blue-800 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow transition"
+                                        >
+                                            Aplicar em Lote
+                                        </button>
+                                    </div>
+                                )}
 
                                 <div className="overflow-y-auto flex-1 pr-2 space-y-2">
                                     <table className="w-full text-left text-sm text-slate-700">
