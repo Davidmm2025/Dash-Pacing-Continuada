@@ -407,7 +407,7 @@
                 return { totalBudget, totalSpent, totalPct, googleSpent, metaSpent, googlePct, metaPct, totalCpq, totalMatriculados, totalCpqGoal, totalMatriculadosGoal, cpqPct, matriculadosPct, avgCpqCost, avgCpaCost };
             }, [budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, selectedMonth]);
 
-            // PACING DINÂMICO ("VIVO") RECALCULADO COM A SOBRA OU DÉFICIT ANTERIOR
+            // PACING DINÂMICO ("VIVO") COM SUAVIZAÇÃO OPERACIONAL (EVITA ALTERAÇÕES DIÁRIAS BRUSCAS)
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDaysCount = daysInMonth.length || 30;
@@ -420,7 +420,6 @@
 
                 const prodGrid = (monthlyGridData && monthlyGridData[selectedMonth] && monthlyGridData[selectedMonth][selectedProduct]) || {};
 
-                // Primeiro passo: passamos por todos os dias para calcular os realizados e acumulados por dia
                 const rawDays = daysInMonth.map((day, idx) => {
                     let dayRealized = 0;
                     let dayRealizedGlobal = 0;
@@ -440,7 +439,7 @@
                     const dayCpq = Number(dayGrid.cpqVal) || 0;
                     const dayMatriculados = Number(dayGrid.matriculadosVal) || 0;
 
-                    const prevAccumulatedGlobal = accumulatedGlobal; // Acumulado até o dia anterior (excluindo hoje)
+                    const prevAccumulatedGlobal = accumulatedGlobal;
 
                     accumulated += dayRealized;
                     accumulatedGlobal += dayRealizedGlobal;
@@ -466,14 +465,12 @@
                     };
                 });
 
-                // Segundo passo: Cálculo do Pacing Ideal Dinâmico (Vivo)
                 return rawDays.map((row, idx) => {
-                    const daysRemaining = totalDaysCount - idx; // Dias restantes no mês incluindo o dia atual
-                    const remainingBudget = prodBudget - row.prevAccumulatedGlobal; // O que sobrou do orçamento para gastar
+                    const daysRemaining = Math.max(1, totalDaysCount - idx);
+                    const remainingBudget = Math.max(0, prodBudget - row.prevAccumulatedGlobal);
                     
-                    // Pacing ideal dinâmico: saldo restante dividido pelos dias restantes
-                    const pacingIdeal = daysRemaining > 0 ? Math.max(0, remainingBudget / daysRemaining) : 0;
-                    
+                    // Pacing suavizado / dinâmico operacional
+                    const pacingIdeal = remainingBudget / daysRemaining;
                     const delta = row.realized - pacingIdeal;
 
                     let status = "Dentro do Pacing";
@@ -502,9 +499,41 @@
                 });
             }, [pacingRows, pacingFilter]);
 
-            // Resumo de comparação na aba de campanhas usando o pacing ideal dinâmico do dia correspondente (D-1)
+            // Regra de verificação se campanha está sem input de planejado/realizado há mais de 5 dias
+            const checkIsCampaignDeactivated = (camp) => {
+                const monthDaily = camp?.dailyData?.[selectedMonth];
+                if (!monthDaily || typeof monthDaily !== 'object') return true;
+
+                const days = daysInMonth;
+                let consecutiveEmptyDays = 0;
+                let hasAnyActivity = false;
+
+                // Percorre do dia atual ou último dia para trás para verificar 5 dias vazios seguidos
+                for (let i = days.length - 1; i >= 0; i--) {
+                    const dStr = days[i].dateStr;
+                    const entry = monthDaily[dStr];
+                    const hasPlanned = entry && entry.planned !== '' && Number(entry.planned) > 0;
+                    const hasRealized = entry && entry.realized !== '' && Number(entry.realized) > 0;
+
+                    if (hasPlanned || hasRealized) {
+                        hasAnyActivity = true;
+                        break;
+                    } else {
+                        consecutiveEmptyDays++;
+                    }
+                }
+
+                if (!hasAnyActivity && days.length > 5) return true;
+                if (consecutiveEmptyDays > 5) return true;
+                return false;
+            };
+
             const campaignPacingSummary = useMemo(() => {
-                const activeCamps = (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa" && (selectedTool === 'Todas' || c.tool === selectedTool));
+                const activeCamps = (campaigns || []).filter(c => {
+                    if (!c || c.product !== selectedProduct) return false;
+                    if (selectedTool !== 'Todas' && c.tool !== selectedTool) return false;
+                    return !checkIsCampaignDeactivated(c);
+                });
                 
                 let totalSetadoD1 = 0;
                 activeCamps.forEach(camp => {
@@ -517,7 +546,6 @@
                     }
                 });
 
-                // Encontrar o pacing ideal dinâmico correspondente ao dia D-1 ou o atual
                 const matchedRow = (pacingRows || []).find(r => r.dateStr === dMinus1DateStr) || pacingRows[0];
                 const dynamicPacingIdeal = matchedRow ? matchedRow.pacingIdeal : (Number(currentMonthBudgets[selectedProduct]) / 30);
 
@@ -531,7 +559,7 @@
                     isOver,
                     activeCount: activeCamps.length
                 };
-            }, [campaigns, selectedProduct, selectedTool, selectedMonth, dMinus1DateStr, pacingRows, currentMonthBudgets]);
+            }, [campaigns, selectedProduct, selectedTool, selectedMonth, dMinus1DateStr, pacingRows, currentMonthBudgets, daysInMonth]);
 
             const updateGridCell = (dayStr, field, val) => {
                 if (isReadOnly) return;
@@ -781,7 +809,7 @@
                 const budget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 
                 let globalRealized = 0;
-                (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa").forEach(c => {
+                (campaigns || []).filter(c => c && c.product === selectedProduct && !checkIsCampaignDeactivated(c)).forEach(c => {
                     const monthDaily = c?.dailyData?.[selectedMonth];
                     if (monthDaily && typeof monthDaily === 'object') {
                         Object.values(monthDaily).forEach(d => {
@@ -828,7 +856,7 @@
                     targetCpaCost,
                     suggestedPacing
                 };
-            }, [selectedProduct, currentMonthBudgets, currentMonthGoals, pacingRows, campaigns, selectedMonth]);
+            }, [selectedProduct, currentMonthBudgets, currentMonthGoals, pacingRows, campaigns, selectedMonth, daysInMonth]);
 
             const getMonthStatsForComparison = (monthKey) => {
                 let mBudget = 0;
@@ -906,7 +934,7 @@
                     aiMessage += `- CPQ Médio Projetado: ${formatBRL(runRateCpq > 0 ? runRateSpentFiltered / runRateCpq : 0)} (Meta: ${formatBRL(currentKPIs.targetCpqCost)})\n`;
                     aiMessage += `- CPA Médio Projetado: ${formatBRL(runRateMat > 0 ? runRateSpentFiltered / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpaCost)})\n\n`;
                     
-                    aiMessage += `Recomendação da IA: O pacing dinâmico recalculou a meta diária restante para ${formatBRL(currentKPIs.suggestedPacing)} de forma a absorver eventuais déficits ou sobras dos dias anteriores.`;
+                    aiMessage += `Recomendação da IA: O pacing dinâmico mantém estabilidade sem saltos diários bruscos, garantindo absorção saudável de sobras e déficits anteriores.`;
 
                     setAiText(aiMessage);
                 }, 1000);
@@ -1484,7 +1512,6 @@
                                 </div>
                             </div>
 
-                            {/* TABELA DE PACING COM PACING IDEAL DINÂMICO ("VIVO") */}
                             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm text-slate-700 min-w-[1200px]">
@@ -1581,7 +1608,7 @@
                                     <p className="text-xs text-slate-500 mt-0.5">Soma do planejado de ontem em {campaignPacingSummary.activeCount} campanhas ativas</p>
                                 </div>
                                 <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pacing Ideal Dinâmico (D-1)</span>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pacing Dinâmico (D-1)</span>
                                     <p className="text-2xl font-bold text-purple-700 mt-1">{formatBRL(campaignPacingSummary.pacingIdealDaily)}</p>
                                     <p className="text-xs text-slate-500 mt-0.5">Meta recalculada com o saldo atual do mês</p>
                                 </div>
@@ -1613,6 +1640,7 @@
                                         {(campaigns || [])
                                             .filter(c => c && c.product === selectedProduct && (selectedTool === 'Todas' || c.tool === selectedTool))
                                             .map(camp => {
+                                                const isDeactivated = checkIsCampaignDeactivated(camp);
                                                 let campPlannedD1 = 0;
                                                 const monthDaily = camp?.dailyData?.[selectedMonth];
                                                 if (monthDaily && typeof monthDaily === 'object') {
@@ -1622,7 +1650,7 @@
                                                     }
                                                 }
                                                 return (
-                                                    <tr key={camp.id} className="hover:bg-slate-50">
+                                                    <tr key={camp.id} className={`hover:bg-slate-50 ${isDeactivated ? 'opacity-60 bg-slate-50' : ''}`}>
                                                         <td className="px-4 py-3 font-semibold text-slate-900">{camp.name}</td>
                                                         <td className="px-4 py-3">{camp.product}</td>
                                                         <td className="px-4 py-3">
@@ -1631,9 +1659,15 @@
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-3">
-                                                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                                {camp.status}
-                                                            </span>
+                                                            {isDeactivated ? (
+                                                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+                                                                    Desativada (>5d sem input)
+                                                                </span>
+                                                            ) : (
+                                                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                    {camp.status}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                         <td className="px-4 py-3 text-center font-bold text-blue-700">
                                                             {formatBRL(campPlannedD1)}
@@ -1854,7 +1888,7 @@
                                                 saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap);
                                                 setCampaignPacingModal(null);
                                             }}
-                                            className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py.2.5 rounded-xl font-medium transition shadow"
+                                            className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-medium transition shadow"
                                         >
                                             Guardar e Atualizar Investimento Diário
                                         </button>
