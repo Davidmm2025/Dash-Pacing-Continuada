@@ -263,7 +263,7 @@
 
             useEffect(() => {
                 if (!window.db) return;
-                // CHAVE ANTIGA RESTAURADA: main_state_multi_month_v3
+                // CHAVE ANTIGA CORRETA: main_state_multi_month_v3
                 const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v3");
                 
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
@@ -315,7 +315,6 @@
 
                 if (window.db) {
                     setSyncStatus("A guardar...");
-                    // CHAVE ANTIGA RESTAURADA: main_state_multi_month_v3
                     window.db.collection("dash_data").doc("main_state_multi_month_v3").set({
                         budgetsByMonth: b,
                         goalsByMonth: g,
@@ -411,7 +410,7 @@
                 return { totalBudget, totalSpent, totalPct, googleSpent, metaSpent, googlePct, metaPct, totalCpq, totalMatriculados, totalCpqGoal, totalMatriculadosGoal, cpqPct, matriculadosPct, avgCpqCost, avgCpaCost };
             }, [budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, selectedMonth]);
 
-            // PLANEJADO DIÁRIO (Com recálculo restrito a partir da terça-feira da readequação)
+            // PLANEJADO DIÁRIO (Recálculo estrito a partir da terça-feira da semana vigente, ex: 06/10)
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDaysCount = daysInMonth.length || 30;
@@ -777,21 +776,39 @@
                 });
             };
 
+            // RECÁLCULO ESTRITO A PARTIR DA TERÇA-FEIRA DA SEMANA VIGENTE (ex: 06/10)
             const handleGeneratePacing = () => {
                 if (isReadOnly) return;
 
                 let targetTuesdayIndex = -1;
+                const now = new Date();
+                const isCurrentMonth = selectedMonth === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+                // Se for o mês atual, localiza a terça-feira da semana vigente (a mais recente até o dia de hoje, ex: 06/10)
                 daysInMonth.forEach((d, idx) => {
                     if (d.isTuesday) {
-                        targetTuesdayIndex = idx;
+                        if (isCurrentMonth) {
+                            if (d.dateNum <= now.getDate()) {
+                                targetTuesdayIndex = idx;
+                            }
+                        } else {
+                            targetTuesdayIndex = idx;
+                        }
                     }
                 });
+
+                // Fallback de segurança caso nenhuma terça seja encontrada pela data do sistema
+                if (targetTuesdayIndex === -1) {
+                    daysInMonth.forEach((d, idx) => {
+                        if (d.isTuesday) targetTuesdayIndex = idx;
+                    });
+                }
 
                 if (targetTuesdayIndex !== -1) {
                     const triggerKey = `${selectedMonth}_${selectedProduct}`;
                     const updatedTriggers = { ...recalcTriggers, [triggerKey]: targetTuesdayIndex };
                     saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, campaignMap, updatedTriggers);
-                    alert(`Planejamento Diário recalculado a partir da terça-feira (${daysInMonth[targetTuesdayIndex].dateStr}) com base no saldo disponível. Dias anteriores mantidos intactos!`);
+                    alert(`Planejamento Diário recalculado a partir da terça-feira (${daysInMonth[targetTuesdayIndex].dateStr}) com base no saldo disponível. Dias anteriores mantidos totalmente intactos!`);
                 } else {
                     alert("Nenhuma terça-feira encontrada no período para readequação.");
                 }
@@ -942,7 +959,7 @@
                     aiMessage += `- CPQ Médio Projetado: ${formatBRL(runRateCpq > 0 ? runRateSpentFiltered / runRateCpq : 0)} (Meta: ${formatBRL(currentKPIs.targetCpqCost)})\n`;
                     aiMessage += `- CPA Médio Projetado: ${formatBRL(runRateMat > 0 ? runRateSpentFiltered / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpaCost)})\n\n`;
                     
-                    aiMessage += `Recomendação da IA: O Planejamento Diário mantém-se estável e é recalculado exclusivamente a partir da terça-feira escolhida quando necessário, sem alterar o passado.`;
+                    aiMessage += `Recomendação da IA: O Planejamento Diário mantém-se estável e é recalculado exclusivamente a partir da terça-feira vigente (06/10), preservando totalmente as semanas anteriores.`;
 
                     setAiText(aiMessage);
                 }, 1000);
@@ -1047,9 +1064,9 @@
                     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-4">
                         <div>
                             <h2 className="text-xl font-bold text-slate-900">
-                                Painel de Rateio & Planejamento Diário (Alterações às Terças)
+                                Painel de Rateio & Planejamento Diário (Ciclo Terça a Segunda)
                             </h2>
-                            <p className="text-slate-500 text-sm mt-0.5">Planejamento diário estável | Recálculo a partir da terça-feira da semana vigente sem alterar o passado</p>
+                            <p className="text-slate-500 text-sm mt-0.5">Recálculo estrito a partir da terça-feira da semana vigente (06/10), preservando o passado</p>
                         </div>
                         <div className="flex gap-2 items-center">
                             {!isReadOnly && (
