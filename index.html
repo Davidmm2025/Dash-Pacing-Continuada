@@ -55,7 +55,7 @@
                 case 'pie-chart': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
                 case 'refresh': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>;
                 case 'lock': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-                case 'settings': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1.2 1.84l-1.57.7a2 2 0 0 1-2.11-.45l-.13-.13a2 2 0 0 0-2.83 0l-.31.31a2 2 0 0 0 0 2.83l.13.13a2 2 0 0 1 .45 2.11l-.7 1.57a2 2 0 0 1-1.84 1.2H4a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.2 1.84l.7 1.57a2 2 0 0 1 .45 2.11l-.13.13a2 2 0 0 0 0 2.83l.31.31a2 2 0 0 0 2.83 0l.13-.13a2 2 0 0 1 2.11-.45l1.57-.7a2 2 0 0 1 1.84 1.2V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1.2-1.84l1.57-.7a2 2 0 0 1 2.11.45l.13.13a2 2 0 0 0 2.83 0l.31-.31a2 2 0 0 0 0-2.83l-.13-.13a2 2 0 0 1-.45-2.11l.7-1.57a2 2 0 0 1 1.84-1.2H20a2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2h-.18a2 2 0 0 1-1.2-1.84l-.7-1.57a2 2 0 0 1-.45-2.11l.13-.13a2 2 0 0 0 0-2.83l-.31-.31a2 2 0 0 0-2.83 0l-.13.13a2 2 0 0 1-2.11.45l-1.57-.7A2 2 0 0 1 14 4.18V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
+                case 'settings': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1.2 1.84l-1.57.7a2 2 0 0 1-2.11-.45l-.13-.13a2 2 0 0 0-2.83 0l-.31.31a2 2 0 0 0 0 2.83l.13.13a2 2 0 0 1 .45 2.11l-.7 1.57a2 2 0 0 1-1.84 1.2H4a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.2 1.84l.7 1.57a2 2 0 0 1 .45 2.11l-.13.13a2 2 0 0 0 0 2.83l.31.31a2 2 0 0 0 2.83 0l.13-.13a2 2 0 0 1 2.11-.45l1.57-.7a2 2 0 0 1 1.84 1.2V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1.2-1.84l1.57-.7a2 2 0 0 1 2.11.45l.13.13a2 2 0 0 0 2.83 0l.31-.31a2 2 0 0 0 0-2.83l-.13-.13a2 2 0 0 1-.45-2.11l.7-1.57a2 2 0 0 1 1.84-1.2H20a2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2h-.18a2 2 0 0 1-1.2-1.84l-.7-1.57a2 2 0 0 1-.45-2.11l.13-.13a2 2 0 0 0 0-2.83l-.31-.31a2 2 0 0 0-2.83 0l-.13-.13a2 2 0 0 1-2.11.45l-1.57-.7A2 2 0 0 1 14 4.18V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
                 default: return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>;
             }
         };
@@ -186,19 +186,13 @@
 
             const [monthlyGridData, setMonthlyGridData] = useState({});
             const [campaigns, setCampaigns] = useState([]);
+            const [recalcTriggers, recalcTriggersSet] = useState({}); // Armazena a semana/terça da readequação de pacing por produto/mês
 
             const [isAiModalOpen, setIsAiModalOpen] = useState(false);
             const [aiText, setAiText] = useState("");
             const [isShareModalOpen, setIsShareModalOpen] = useState(false);
             const [syncStatus, setSyncStatus] = useState("A carregar nuvem...");
             const [campaignPacingModal, setCampaignPacingModal] = useState(null);
-
-            const [batchStartDay, setBatchStartDay] = useState(1);
-            const [batchEndDay, setBatchEndDay] = useState(10);
-            const [batchPlannedValue, setBatchPlannedValue] = useState("");
-
-            const [compareMonthA, setCompareMonthA] = useState("2026-09");
-            const [compareMonthB, setCompareMonthB] = useState("2026-10");
 
             const isReadOnly = currentUser?.role === 'readonly';
 
@@ -251,7 +245,7 @@
                         weekday: weekdays[d.getDay()],
                         weekNum: `Semana ${weekNum}`,
                         isWeekend: d.getDay() === 0 || d.getDay() === 6,
-                        isTuesday: d.getDay() === 2, // Terça-feira (dia de alteração semanal de investimento)
+                        isTuesday: d.getDay() === 2, // Terça-feira
                         isPast: d < new Date(now.getFullYear(), now.getMonth(), now.getDate()),
                         isToday: d.toDateString() === now.toDateString()
                     });
@@ -269,7 +263,7 @@
 
             useEffect(() => {
                 if (!window.db) return;
-                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v3");
+                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v4");
                 
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
                     if (docSnap && docSnap.exists) {
@@ -277,6 +271,7 @@
                         if (data.budgetsByMonth) setBudgetsByMonth(prev => ({ ...prev, ...data.budgetsByMonth }));
                         if (data.goalsByMonth) setGoalsByMonth(prev => ({ ...prev, ...data.goalsByMonth }));
                         if (data.monthlyGridData) setMonthlyGridData(prev => ({ ...prev, ...data.monthlyGridData }));
+                        if (data.recalcTriggers) recalcTriggersSet(prev => ({ ...prev, ...data.recalcTriggers }));
                         
                         if (Array.isArray(data.campaigns)) {
                             const validCampaigns = data.campaigns.filter(c => {
@@ -290,7 +285,7 @@
                         if (data.campaignMap) setCampaignMap(prev => ({ ...prev, ...data.campaignMap }));
                         setSyncStatus("Sincronizado com a nuvem (Protegido)");
                     } else {
-                        docRef.set({ budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, campaignMap }).catch(() => {});
+                        docRef.set({ budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, campaignMap, recalcTriggers }).catch(() => {});
                         setSyncStatus("Sincronizado com a nuvem (Protegido)");
                     }
                 }, (error) => {
@@ -301,28 +296,31 @@
                 return () => unsubscribe();
             }, []);
 
-            const saveDataToCloud = (newBudgets, newGoals, newGrid, newCampaigns, newMap) => {
+            const saveDataToCloud = (newBudgets, newGoals, newGrid, newCampaigns, newMap, newTriggers) => {
                 if (isReadOnly) return;
                 const b = newBudgets || budgetsByMonth;
                 const g = newGoals || goalsByMonth;
                 const gr = newGrid || monthlyGridData;
                 const c = newCampaigns || campaigns;
                 const m = newMap || campaignMap;
+                const tr = newTriggers || recalcTriggers;
 
                 setBudgetsByMonth(b);
                 setGoalsByMonth(g);
                 setMonthlyGridData(gr);
                 setCampaigns(c);
                 setCampaignMap(m);
+                recalcTriggersSet(tr);
 
                 if (window.db) {
                     setSyncStatus("A guardar...");
-                    window.db.collection("dash_data").doc("main_state_multi_month_v3").set({
+                    window.db.collection("dash_data").doc("main_state_multi_month_v4").set({
                         budgetsByMonth: b,
                         goalsByMonth: g,
                         monthlyGridData: gr,
                         campaigns: c,
-                        campaignMap: m
+                        campaignMap: m,
+                        recalcTriggers: tr
                     }, { merge: true }).then(() => {
                         setSyncStatus("Sincronizado com a nuvem (Protegido)");
                     }).catch(() => {
@@ -411,22 +409,24 @@
                 return { totalBudget, totalSpent, totalPct, googleSpent, metaSpent, googlePct, metaPct, totalCpq, totalMatriculados, totalCpqGoal, totalMatriculadosGoal, cpqPct, matriculadosPct, avgCpqCost, avgCpaCost };
             }, [budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, selectedMonth]);
 
-            // PACING MÉDIO IDEAL FIXO (Orçamento total dividido pelo total de dias do mês, sem flutuação diária)
+            // PLANEJADO DIÁRIO (Com recálculo restrito a partir da terça-feira da readequação)
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDaysCount = daysInMonth.length || 30;
-                const fixedPacingIdeal = totalDaysCount > 0 ? prodBudget / totalDaysCount : 0;
+                const defaultPlanned = totalDaysCount > 0 ? prodBudget / totalDaysCount : 0;
 
                 const targetCampaigns = (campaigns || []).filter(c => c && c.product === selectedProduct && (c.status || "Ativa") === "Ativa");
 
-                let accumulated = 0;
-                let accumulatedGlobal = 0;
-                let accumulatedCpq = 0;
-                let accumulatedMatriculados = 0;
+                // Identificar se há gatilho de recálculo guardado para este mês/produto
+                const triggerKey = `${selectedMonth}_${selectedProduct}`;
+                const recalcTuesdayIndex = recalcTriggers[triggerKey] ?? -1;
 
-                const prodGrid = (monthlyGridData && monthlyGridData[selectedMonth] && monthlyGridData[selectedMonth][selectedProduct]) || {};
+                let rowsPrelim = [];
+                let accumulatedRealizedBeforeTuesday = 0;
+                let daysCountFromTuesdayOnward = 0;
 
-                return daysInMonth.map((day) => {
+                // 1ª Passagem: Calcular realizados e computar o acumulado até a terça do gatilho
+                daysInMonth.forEach((day, idx) => {
                     let dayRealized = 0;
                     let dayRealizedGlobal = 0;
 
@@ -441,7 +441,44 @@
                         }
                     });
 
-                    const dayGrid = prodGrid[day.dateStr] || { cpqVal: '', matriculadosVal: '' };
+                    rowsPrelim.push({ ...day, dayRealized, dayRealizedGlobal });
+
+                    if (recalcTuesdayIndex !== -1 && idx < recalcTuesdayIndex) {
+                        accumulatedRealizedBeforeTuesday += dayRealizedGlobal;
+                    }
+                    if (recalcTuesdayIndex === -1 || idx >= recalcTuesdayIndex) {
+                        daysCountFromTuesdayOnward++;
+                    }
+                });
+
+                // Se houver recálculo a partir da terça, redistribuir o saldo restante pelos dias restantes a partir da terça
+                let adjustedPlannedFromTuesday = defaultPlanned;
+                if (recalcTuesdayIndex !== -1 && daysCountFromTuesdayOnward > 0) {
+                    const remainingBudget = prodBudget - accumulatedRealizedBeforeTuesday;
+                    adjustedPlannedFromTuesday = Math.max(0, remainingBudget / daysCountFromTuesdayOnward);
+                }
+
+                let accumulated = 0;
+                let accumulatedGlobal = 0;
+                let accumulatedCpq = 0;
+                let accumulatedMatriculados = 0;
+
+                const prodGrid = (monthlyGridData && monthlyGridData[selectedMonth] && monthlyGridData[selectedMonth][selectedProduct]) || {};
+
+                return rowsPrelim.map((row, idx) => {
+                    let plannedVal = defaultPlanned;
+                    if (recalcTuesdayIndex !== -1) {
+                        if (idx < recalcTuesdayIndex) {
+                            plannedVal = defaultPlanned; // Mantém intacto antes da terça
+                        } else {
+                            plannedVal = adjustedPlannedFromTuesday; // Recalcula a partir da terça
+                        }
+                    }
+
+                    const dayRealized = row.dayRealized;
+                    const dayRealizedGlobal = row.dayRealizedGlobal;
+
+                    const dayGrid = prodGrid[row.dateStr] || { cpqVal: '', matriculadosVal: '' };
                     const dayCpq = Number(dayGrid.cpqVal) || 0;
                     const dayMatriculados = Number(dayGrid.matriculadosVal) || 0;
 
@@ -450,26 +487,25 @@
                     accumulatedCpq += dayCpq;
                     accumulatedMatriculados += dayMatriculados;
 
-                    const balance = prodBudget - accumulatedGlobal;
+                    // DIFERENÇA: Valores de sobra são positivos (+) e gastos a mais são negativos (-)
+                    // Diferença = Planejado - Realizado (se Planejado > Realizado, sobra positiva. Se Realizado > Planejado, estouro negativo)
+                    const diferenca = plannedVal - dayRealized;
                     const dayCpqCost = dayCpq > 0 ? dayRealized / dayCpq : 0;
                     const dayCpaCost = dayMatriculados > 0 ? dayRealized / dayMatriculados : 0;
 
-                    const delta = dayRealized - fixedPacingIdeal;
-
                     let status = "Dentro do Pacing";
-                    if (dayRealized > fixedPacingIdeal) {
+                    if (dayRealized > plannedVal) {
                         status = "Overbudget";
-                    } else if (dayRealized < fixedPacingIdeal) {
+                    } else if (dayRealized < plannedVal) {
                         status = "Underbudget";
                     }
 
                     return {
-                        ...day,
+                        ...row,
                         realized: dayRealized,
-                        pacingIdeal: fixedPacingIdeal,
-                        delta,
+                        pacingIdeal: plannedVal, // Mantém compatibilidade de variável interna
+                        diferenca,
                         accumulated,
-                        balance,
                         cpqVal: dayCpq,
                         cpqCost: dayCpqCost,
                         matriculadosVal: dayMatriculados,
@@ -479,7 +515,7 @@
                         status
                     };
                 });
-            }, [selectedProduct, currentMonthBudgets, daysInMonth, campaigns, selectedMonth, selectedTool, monthlyGridData]);
+            }, [selectedProduct, currentMonthBudgets, daysInMonth, campaigns, selectedMonth, selectedTool, monthlyGridData, recalcTriggers]);
 
             const filteredPacingRows = useMemo(() => {
                 return (pacingRows || []).filter(row => {
@@ -507,14 +543,14 @@
                 });
 
                 const totalDaysCount = daysInMonth.length || 30;
-                const fixedPacingIdeal = totalDaysCount > 0 ? (Number(currentMonthBudgets[selectedProduct]) || 0) / totalDaysCount : 0;
+                const fixedPlanned = totalDaysCount > 0 ? (Number(currentMonthBudgets[selectedProduct]) || 0) / totalDaysCount : 0;
 
-                const diff = totalSetadoD1 - fixedPacingIdeal;
+                const diff = totalSetadoD1 - fixedPlanned;
                 const isOver = diff > 0;
 
                 return {
                     totalSetadoD1,
-                    pacingIdealDaily: fixedPacingIdeal,
+                    pacingIdealDaily: fixedPlanned,
                     diff,
                     isOver,
                     activeCount: activeCamps.length
@@ -530,7 +566,7 @@
                     updatedGrid[selectedMonth][selectedProduct][dayStr] = { cpqVal: '', matriculadosVal: '' };
                 }
                 updatedGrid[selectedMonth][selectedProduct][dayStr][field] = val;
-                saveDataToCloud(budgetsByMonth, goalsByMonth, updatedGrid, campaigns, campaignMap);
+                saveDataToCloud(budgetsByMonth, goalsByMonth, updatedGrid, campaigns, campaignMap, recalcTriggers);
             };
 
             const parseCSVLine = (text, separator = ',') => {
@@ -735,7 +771,7 @@
                             return !n.includes('total') && !n.includes('resultados') && !n.includes('results');
                         });
 
-                        saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap);
+                        saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap, recalcTriggers);
                         alert(`Sucesso! Ficheiro processado e sincronizado. ${importedTotal} dias foram atualizados de forma exata e segura.`);
                         e.target.value = '';
                     };
@@ -745,15 +781,26 @@
 
             const handleGeneratePacing = () => {
                 if (isReadOnly) return;
-                const today = new Date();
-                const dayOfWeek = today.getDay(); // 2 = Terça-feira
-                
-                if (dayOfWeek !== 2) {
-                    alert("Aviso: O orçamento e a revisão do pacing das campanhas só podem ser alterados às terças-feiras, conforme sua rotina semanal!");
-                    return;
-                }
 
-                alert("Pacing Médio Ideal verificado e pronto para alteração semanal de investimento para " + selectedProduct + "!");
+                // Encontrar a última terça-feira (ou a terça da semana vigente)
+                let targetTuesdayIndex = -1;
+                daysInMonth.forEach((d, idx) => {
+                    if (d.isTuesday) {
+                        const dObj = new Date(d.dateStr.split('/').reverse().join('-') + `-${selectedMonth.split('-')[0]}`);
+                        // Se for hoje ou anterior na semana vigente, marca
+                        targetTuesdayIndex = idx;
+                    }
+                });
+
+                // Se houver uma terça válida no mês até hoje, guarda o gatilho para recalcular a partir dela sem mexer no passado
+                if (targetTuesdayIndex !== -1) {
+                    const triggerKey = `${selectedMonth}_${selectedProduct}`;
+                    const updatedTriggers = { ...recalcTriggers, [triggerKey]: targetTuesdayIndex };
+                    saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, campaignMap, updatedTriggers);
+                    alert(`Planejamento Diário recalculado a partir da terça-feira (${daysInMonth[targetTuesdayIndex].dateStr}) com base no saldo disponível. Dias anteriores mantidos intactos!`);
+                } else {
+                    alert("Nenhuma terça-feira encontrada no período para readequação.");
+                }
             };
 
             const updateBudgetAndGoalsForProduct = (prodName, newBudget, newCpq, newMatriculados) => {
@@ -770,7 +817,7 @@
                     matriculados: Number(newMatriculados)
                 };
 
-                saveDataToCloud(updatedBudgets, updatedGoals, monthlyGridData, campaigns, campaignMap);
+                saveDataToCloud(updatedBudgets, updatedGoals, monthlyGridData, campaigns, campaignMap, recalcTriggers);
             };
 
             const currentKPIs = useMemo(() => {
@@ -883,7 +930,7 @@
 
             const handleOpenAI = () => {
                 setIsAiModalOpen(true);
-                setAiText("A analisar métricas de performance com Pacing Médio Ideal Fixo e revisão semanal...");
+                setAiText("A analisar métricas de performance com Planejamento Diário e revisão semanal...");
                 setTimeout(() => {
                     const pastDays = (pacingRows || []).filter(r => r.isPast).length || 1;
                     const totalDays = (pacingRows || []).length || 30;
@@ -901,7 +948,7 @@
                     aiMessage += `- CPQ Médio Projetado: ${formatBRL(runRateCpq > 0 ? runRateSpentFiltered / runRateCpq : 0)} (Meta: ${formatBRL(currentKPIs.targetCpqCost)})\n`;
                     aiMessage += `- CPA Médio Projetado: ${formatBRL(runRateMat > 0 ? runRateSpentFiltered / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpaCost)})\n\n`;
                     
-                    aiMessage += `Recomendação da IA: O pacing ideal está fixado em média linear (${formatBRL(currentKPIs.suggestedPacing)}/dia) para evitar flutuações diárias. Avalie o ritmo de investimento e faça os ajustes necessários exclusivamente às terças-feiras.`;
+                    aiMessage += `Recomendação da IA: O Planejamento Diário mantém-se estável e é recalculado exclusivamente a partir da terça-feira escolhida quando necessário, sem alterar o passado.`;
 
                     setAiText(aiMessage);
                 }, 1000);
@@ -1006,9 +1053,9 @@
                     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-4">
                         <div>
                             <h2 className="text-xl font-bold text-slate-900">
-                                Painel de Rateio & Pacing Médio Ideal Fixo (Alterações às Terças)
+                                Painel de Rateio & Planejamento Diário (Alterações às Terças)
                             </h2>
-                            <p className="text-slate-500 text-sm mt-0.5">Pacing linear estável sem flutuações diárias | Ajustes de orçamento restritos às terças-feiras</p>
+                            <p className="text-slate-500 text-sm mt-0.5">Planejamento diário estável | Recálculo a partir da terça-feira da semana vigente sem alterar o passado</p>
                         </div>
                         <div className="flex gap-2 items-center">
                             {!isReadOnly && (
@@ -1074,7 +1121,7 @@
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setActiveTab("pacing")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'pacing' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`}>
-                                    📅 Pacing Fixo & Metas
+                                    📅 Planejamento Diário & Metas
                                 </button>
                                 <button onClick={() => setActiveTab("campaigns")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'campaigns' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`}>
                                     🚀 Campanhas
@@ -1102,7 +1149,7 @@
                                     e.preventDefault();
                                     if (!newMapCampName.trim()) return;
                                     const updatedMap = { ...campaignMap, [newMapCampName.trim()]: newMapProduct };
-                                    saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, updatedMap);
+                                    saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, updatedMap, recalcTriggers);
                                     setNewMapCampName("");
                                     alert("Nova campanha mapeada com sucesso!");
                                 }} className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -1157,7 +1204,7 @@
                                                             onClick={() => {
                                                                 const copy = { ...campaignMap };
                                                                 delete copy[cName];
-                                                                saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, copy);
+                                                                saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, copy, recalcTriggers);
                                                             }}
                                                             className="text-red-500 hover:text-red-700 p-1"
                                                         >
@@ -1356,7 +1403,7 @@
                                         <button 
                                             onClick={handleGeneratePacing}
                                             className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition"
-                                            title="Alteração de investimento permitida apenas às terças-feiras"
+                                            title="Recalcula o Planejamento Diário a partir da terça-feira da semana vigente"
                                         >
                                             <Icon name="refresh" className="w-4 h-4" /> Verificar Pacing Fixo (Apenas Terças)
                                         </button>
@@ -1399,18 +1446,12 @@
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                     <span className="text-[11px] font-semibold text-slate-500 uppercase flex items-center flex-wrap gap-1">
                                         Consumo Realizado {selectedTool !== 'Todas' && <span className="text-blue-600">({selectedTool})</span>}
                                     </span>
                                     <p className="text-lg font-bold text-blue-700 mt-1">{formatBRL(currentKPIs.totalRealized)}</p>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase flex items-center flex-wrap gap-1">
-                                        Saldo Restante {selectedTool !== 'Todas' && <span className="text-emerald-600">(Global)</span>}
-                                    </span>
-                                    <p className="text-lg font-bold text-emerald-600 mt-1">{formatBRL(currentKPIs.balance)}</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                     <span className="text-[11px] font-semibold text-slate-500 uppercase">CPQ (Real / Meta)</span>
@@ -1440,11 +1481,10 @@
                                                 <th className="px-3 py-3 w-20">Data</th>
                                                 <th className="px-3 py-3 w-16">Dia</th>
                                                 <th className="px-3 py-3 w-24">Semana</th>
-                                                <th className="px-3 py-3 w-32">Pacing Ideal Fixo (R$)</th>
+                                                <th className="px-3 py-3 w-32">Planejado Diário (R$)</th>
                                                 <th className="px-3 py-3 w-32">Realizado (R$)</th>
-                                                <th className="px-3 py-3 w-32">Delta</th>
+                                                <th className="px-3 py-3 w-32">Diferença</th>
                                                 <th className="px-3 py-3 w-32">Acumulado</th>
-                                                <th className="px-3 py-3 w-32">Saldo</th>
                                                 <th className="px-3 py-3 w-36">Inscritos Qualificados</th>
                                                 <th className="px-3 py-3 w-32 text-amber-700 font-bold">CPQ (R$)</th>
                                                 <th className="px-3 py-3 w-32">Matriculados</th>
@@ -1454,7 +1494,8 @@
                                         </thead>
                                         <tbody className="divide-y divide-slate-200">
                                             {filteredPacingRows.map((row) => {
-                                                const isOver = row.realized > row.pacingIdeal;
+                                                // Valores de sobra são positivos (verde), gasto a mais são negativos (vermelho)
+                                                const isSobra = row.diferenca >= 0;
                                                 return (
                                                     <tr key={row.dateStr} className={`hover:bg-slate-50 ${row.isTuesday ? 'bg-amber-50/50' : ''} ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
                                                         <td className="px-3 py-3 text-slate-900 font-medium flex items-center gap-1.5">
@@ -1465,11 +1506,10 @@
                                                         <td className="px-3 py-3 text-slate-400 text-xs">{row.weekNum}</td>
                                                         <td className="px-3 py-3 text-purple-700 font-semibold">{formatBRL(row.pacingIdeal)}</td>
                                                         <td className="px-3 py-3 font-semibold text-blue-700">{formatBRL(row.realized)}</td>
-                                                        <td className={`px-3 py-3 font-bold ${isOver ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                            {row.delta > 0 ? `+${formatBRL(row.delta)}` : formatBRL(row.delta)}
+                                                        <td className={`px-3 py-3 font-bold ${isSobra ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                            {row.diferenca >= 0 ? `+${formatBRL(row.diferenca)}` : formatBRL(row.diferenca)}
                                                         </td>
                                                         <td className="px-3 py-3 text-slate-900">{formatBRL(row.accumulated)}</td>
-                                                        <td className="px-3 py-3 font-bold text-emerald-600">{formatBRL(row.balance)}</td>
                                                         
                                                         <td className="px-3 py-3">
                                                             <div className="flex items-center gap-1.5">
@@ -1531,12 +1571,12 @@
                                     <p className="text-xs text-slate-500 mt-0.5">Soma do planejado em {campaignPacingSummary.activeCount} campanhas ativas</p>
                                 </div>
                                 <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pacing Médio Ideal Fixo</span>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Planejamento Diário Base</span>
                                     <p className="text-2xl font-bold text-purple-700 mt-1">{formatBRL(campaignPacingSummary.pacingIdealDaily)}</p>
-                                    <p className="text-xs text-slate-500 mt-0.5">Meta diária linear fixa (Orçamento / Dias do Mês)</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Meta diária linear inicial</p>
                                 </div>
                                 <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status vs Pacing Fixo</span>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status vs Planejado</span>
                                     <div className="mt-1 flex items-center gap-2">
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${campaignPacingSummary.isOver ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                                             {campaignPacingSummary.isOver ? `Acima em +${formatBRL(campaignPacingSummary.diff)}` : `Dentro/Abaixo em ${formatBRL(campaignPacingSummary.diff)}`}
@@ -1587,7 +1627,7 @@
                                                                 onChange={(e) => {
                                                                     const newStatus = e.target.value;
                                                                     const updatedCampaigns = (campaigns || []).map(c => c && c.id === camp.id ? { ...c, status: newStatus } : c);
-                                                                    saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap);
+                                                                    saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap, recalcTriggers);
                                                                 }}
                                                                 className={`px-2.5 py-1 rounded-full text-xs font-semibold border cursor-pointer focus:outline-none ${
                                                                     (camp.status || "Ativa") === "Ativa" 
@@ -1615,7 +1655,7 @@
                                                                 <button 
                                                                     onClick={() => {
                                                                         const newCamps = (campaigns || []).filter(c => c && c.id !== camp.id);
-                                                                        saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, newCamps, campaignMap);
+                                                                        saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, newCamps, campaignMap, recalcTriggers);
                                                                     }}
                                                                     className="text-red-500 hover:text-red-700 p-1 rounded"
                                                                 >
@@ -1765,7 +1805,7 @@
                                         <button 
                                             onClick={() => {
                                                 const updatedCampaigns = (campaigns || []).map(c => c && c.id === campaignPacingModal.id ? campaignPacingModal : c);
-                                                saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap);
+                                                saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap, recalcTriggers);
                                                 setCampaignPacingModal(null);
                                             }}
                                             className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-medium transition shadow"
