@@ -251,6 +251,7 @@
                         weekday: weekdays[d.getDay()],
                         weekNum: `Semana ${weekNum}`,
                         isWeekend: d.getDay() === 0 || d.getDay() === 6,
+                        isTuesday: d.getDay() === 2, // Terça-feira (dia de alteração semanal de investimento)
                         isPast: d < new Date(now.getFullYear(), now.getMonth(), now.getDate()),
                         isToday: d.toDateString() === now.toDateString()
                     });
@@ -345,7 +346,7 @@
                 const map = {};
                 PRODUCTS.forEach(prod => {
                     let total = 0;
-                    (campaigns || []).filter(c => c && c.product === prod && c.status === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool)).forEach(c => {
+                    (campaigns || []).filter(c => c && c.product === prod && (c.status || "Ativa") === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool)).forEach(c => {
                         const monthDaily = c?.dailyData?.[selectedMonth];
                         if (monthDaily && typeof monthDaily === 'object') {
                             Object.values(monthDaily).forEach(d => {
@@ -386,7 +387,7 @@
                 });
 
                 (campaigns || []).forEach(c => {
-                    if (c && c.status === "Ativa") {
+                    if (c && (c.status || "Ativa") === "Ativa") {
                         const monthDaily = c?.dailyData?.[selectedMonth];
                         if (monthDaily && typeof monthDaily === 'object') {
                             Object.values(monthDaily).forEach(d => {
@@ -410,11 +411,13 @@
                 return { totalBudget, totalSpent, totalPct, googleSpent, metaSpent, googlePct, metaPct, totalCpq, totalMatriculados, totalCpqGoal, totalMatriculadosGoal, cpqPct, matriculadosPct, avgCpqCost, avgCpaCost };
             }, [budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, selectedMonth]);
 
-            // PACING DINÂMICO ("VIVO") RECALCULADO COM A SOBRA OU DÉFICIT ANTERIOR
+            // PACING MÉDIO IDEAL FIXO (Orçamento total dividido pelo total de dias do mês, sem flutuação diária)
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDaysCount = daysInMonth.length || 30;
-                const targetCampaigns = (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa");
+                const fixedPacingIdeal = totalDaysCount > 0 ? prodBudget / totalDaysCount : 0;
+
+                const targetCampaigns = (campaigns || []).filter(c => c && c.product === selectedProduct && (c.status || "Ativa") === "Ativa");
 
                 let accumulated = 0;
                 let accumulatedGlobal = 0;
@@ -423,7 +426,7 @@
 
                 const prodGrid = (monthlyGridData && monthlyGridData[selectedMonth] && monthlyGridData[selectedMonth][selectedProduct]) || {};
 
-                const rawDays = daysInMonth.map((day, idx) => {
+                return daysInMonth.map((day) => {
                     let dayRealized = 0;
                     let dayRealizedGlobal = 0;
 
@@ -442,8 +445,6 @@
                     const dayCpq = Number(dayGrid.cpqVal) || 0;
                     const dayMatriculados = Number(dayGrid.matriculadosVal) || 0;
 
-                    const prevAccumulatedGlobal = accumulatedGlobal;
-
                     accumulated += dayRealized;
                     accumulatedGlobal += dayRealizedGlobal;
                     accumulatedCpq += dayCpq;
@@ -453,9 +454,20 @@
                     const dayCpqCost = dayCpq > 0 ? dayRealized / dayCpq : 0;
                     const dayCpaCost = dayMatriculados > 0 ? dayRealized / dayMatriculados : 0;
 
+                    const delta = dayRealized - fixedPacingIdeal;
+
+                    let status = "Dentro do Pacing";
+                    if (dayRealized > fixedPacingIdeal) {
+                        status = "Overbudget";
+                    } else if (dayRealized < fixedPacingIdeal) {
+                        status = "Underbudget";
+                    }
+
                     return {
                         ...day,
                         realized: dayRealized,
+                        pacingIdeal: fixedPacingIdeal,
+                        delta,
                         accumulated,
                         balance,
                         cpqVal: dayCpq,
@@ -464,27 +476,6 @@
                         cpaCost: dayCpaCost,
                         accumulatedCpq,
                         accumulatedMatriculados,
-                        prevAccumulatedGlobal
-                    };
-                });
-
-                return rawDays.map((row, idx) => {
-                    const daysRemaining = totalDaysCount - idx;
-                    const remainingBudget = prodBudget - row.prevAccumulatedGlobal;
-                    const pacingIdeal = daysRemaining > 0 ? Math.max(0, remainingBudget / daysRemaining) : 0;
-                    const delta = row.realized - pacingIdeal;
-
-                    let status = "Dentro do Pacing";
-                    if (row.realized > pacingIdeal) {
-                        status = "Overbudget";
-                    } else if (row.realized < pacingIdeal) {
-                        status = "Underbudget";
-                    }
-
-                    return {
-                        ...row,
-                        pacingIdeal,
-                        delta,
                         status
                     };
                 });
@@ -493,6 +484,7 @@
             const filteredPacingRows = useMemo(() => {
                 return (pacingRows || []).filter(row => {
                     if (pacingFilter === "Todos") return true;
+                    if (pacingFilter === "Terças-Feiras") return row.isTuesday;
                     if (pacingFilter.startsWith("Semana")) return row.weekNum === pacingFilter;
                     if (pacingFilter === "Dias Úteis") return !row.isWeekend;
                     if (pacingFilter === "Fins de Semana") return row.isWeekend;
@@ -501,7 +493,7 @@
             }, [pacingRows, pacingFilter]);
 
             const campaignPacingSummary = useMemo(() => {
-                const activeCamps = (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa" && (selectedTool === 'Todas' || c.tool === selectedTool));
+                const activeCamps = (campaigns || []).filter(c => c && c.product === selectedProduct && (c.status || "Ativa") === "Ativa" && (selectedTool === 'Todas' || c.tool === selectedTool));
                 
                 let totalSetadoD1 = 0;
                 activeCamps.forEach(camp => {
@@ -514,20 +506,20 @@
                     }
                 });
 
-                const matchedRow = (pacingRows || []).find(r => r.dateStr === dMinus1DateStr) || pacingRows[0];
-                const dynamicPacingIdeal = matchedRow ? matchedRow.pacingIdeal : (Number(currentMonthBudgets[selectedProduct]) / 30);
+                const totalDaysCount = daysInMonth.length || 30;
+                const fixedPacingIdeal = totalDaysCount > 0 ? (Number(currentMonthBudgets[selectedProduct]) || 0) / totalDaysCount : 0;
 
-                const diff = totalSetadoD1 - dynamicPacingIdeal;
+                const diff = totalSetadoD1 - fixedPacingIdeal;
                 const isOver = diff > 0;
 
                 return {
                     totalSetadoD1,
-                    pacingIdealDaily: dynamicPacingIdeal,
+                    pacingIdealDaily: fixedPacingIdeal,
                     diff,
                     isOver,
                     activeCount: activeCamps.length
                 };
-            }, [campaigns, selectedProduct, selectedTool, selectedMonth, dMinus1DateStr, pacingRows, currentMonthBudgets]);
+            }, [campaigns, selectedProduct, selectedTool, selectedMonth, dMinus1DateStr, daysInMonth, currentMonthBudgets]);
 
             const updateGridCell = (dayStr, field, val) => {
                 if (isReadOnly) return;
@@ -751,18 +743,17 @@
                 });
             };
 
-            // RESTRIÇÃO: O ajuste de pacing só pode ocorrer nas terças-feiras
             const handleGeneratePacing = () => {
                 if (isReadOnly) return;
                 const today = new Date();
-                const dayOfWeek = today.getDay(); // 2 representa Terça-feira (Domingo = 0, Segunda = 1, Terça = 2, ...)
+                const dayOfWeek = today.getDay(); // 2 = Terça-feira
                 
                 if (dayOfWeek !== 2) {
-                    alert("Aviso: O ajuste e recálculo de pacing em mídias só é permitido às terças-feiras para evitar instabilidade nas campanhas!");
+                    alert("Aviso: O orçamento e a revisão do pacing das campanhas só podem ser alterados às terças-feiras, conforme sua rotina semanal!");
                     return;
                 }
 
-                alert("Pacing Dinâmico recalculado com sucesso para " + selectedProduct + " (permitido apenas às terças-feiras)!");
+                alert("Pacing Médio Ideal verificado e pronto para alteração semanal de investimento para " + selectedProduct + "!");
             };
 
             const updateBudgetAndGoalsForProduct = (prodName, newBudget, newCpq, newMatriculados) => {
@@ -786,7 +777,7 @@
                 const budget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 
                 let globalRealized = 0;
-                (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa").forEach(c => {
+                (campaigns || []).filter(c => c && c.product === selectedProduct && (c.status || "Ativa") === "Ativa").forEach(c => {
                     const monthDaily = c?.dailyData?.[selectedMonth];
                     if (monthDaily && typeof monthDaily === 'object') {
                         Object.values(monthDaily).forEach(d => {
@@ -812,9 +803,8 @@
                 const targetCpaCost = matriculadosGoal > 0 ? budget / matriculadosGoal : 0;
 
                 const balance = budget - globalRealized; 
-                
-                const futureDaysCount = (pacingRows || []).filter(r => !r.isPast && !r.isToday).length || 1;
-                const suggestedPacing = balance > 0 ? balance / futureDaysCount : 0;
+                const totalDaysCount = daysInMonth.length || 30;
+                const suggestedPacing = totalDaysCount > 0 ? budget / totalDaysCount : 0;
 
                 return {
                     budget,
@@ -833,7 +823,7 @@
                     targetCpaCost,
                     suggestedPacing
                 };
-            }, [selectedProduct, currentMonthBudgets, currentMonthGoals, pacingRows, campaigns, selectedMonth]);
+            }, [selectedProduct, currentMonthBudgets, currentMonthGoals, pacingRows, campaigns, selectedMonth, daysInMonth]);
 
             const getMonthStatsForComparison = (monthKey) => {
                 let mBudget = 0;
@@ -893,7 +883,7 @@
 
             const handleOpenAI = () => {
                 setIsAiModalOpen(true);
-                setAiText("A analisar métricas de performance, pacing dinâmico e projeção de fim de mês com Inteligência Artificial...");
+                setAiText("A analisar métricas de performance com Pacing Médio Ideal Fixo e revisão semanal...");
                 setTimeout(() => {
                     const pastDays = (pacingRows || []).filter(r => r.isPast).length || 1;
                     const totalDays = (pacingRows || []).length || 30;
@@ -911,7 +901,7 @@
                     aiMessage += `- CPQ Médio Projetado: ${formatBRL(runRateCpq > 0 ? runRateSpentFiltered / runRateCpq : 0)} (Meta: ${formatBRL(currentKPIs.targetCpqCost)})\n`;
                     aiMessage += `- CPA Médio Projetado: ${formatBRL(runRateMat > 0 ? runRateSpentFiltered / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpaCost)})\n\n`;
                     
-                    aiMessage += `Recomendação da IA: O pacing dinâmico recalculou a meta diária restante para ${formatBRL(currentKPIs.suggestedPacing)} de forma a absorver eventuais déficits ou sobras dos dias anteriores (ajuste restrito às terças-feiras).`;
+                    aiMessage += `Recomendação da IA: O pacing ideal está fixado em média linear (${formatBRL(currentKPIs.suggestedPacing)}/dia) para evitar flutuações diárias. Avalie o ritmo de investimento e faça os ajustes necessários exclusivamente às terças-feiras.`;
 
                     setAiText(aiMessage);
                 }, 1000);
@@ -1016,9 +1006,9 @@
                     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-4">
                         <div>
                             <h2 className="text-xl font-bold text-slate-900">
-                                Painel de Rateio Inteligente & Pacing Dinâmico
+                                Painel de Rateio & Pacing Médio Ideal Fixo (Alterações às Terças)
                             </h2>
-                            <p className="text-slate-500 text-sm mt-0.5">Upload universal de CSV com rateio automático, status manual e pacing semanal (terças-feiras)</p>
+                            <p className="text-slate-500 text-sm mt-0.5">Pacing linear estável sem flutuações diárias | Ajustes de orçamento restritos às terças-feiras</p>
                         </div>
                         <div className="flex gap-2 items-center">
                             {!isReadOnly && (
@@ -1084,7 +1074,7 @@
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setActiveTab("pacing")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'pacing' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`}>
-                                    📅 Pacing Dinâmico & Metas
+                                    📅 Pacing Fixo & Metas
                                 </button>
                                 <button onClick={() => setActiveTab("campaigns")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'campaigns' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-slate-600 hover:bg-slate-100'}`}>
                                     🚀 Campanhas
@@ -1351,6 +1341,7 @@
                                             className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900 font-semibold text-sm focus:outline-none focus:border-blue-700"
                                         >
                                             <option value="Todos">Todos os Dias</option>
+                                            <option value="Terças-Feiras">Apenas Terças-Feiras (Dias de Alteração)</option>
                                             <option value="Semana 1">Semana 1</option>
                                             <option value="Semana 2">Semana 2</option>
                                             <option value="Semana 3">Semana 3</option>
@@ -1365,9 +1356,9 @@
                                         <button 
                                             onClick={handleGeneratePacing}
                                             className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow transition"
-                                            title="Permitido apenas às terças-feiras"
+                                            title="Alteração de investimento permitida apenas às terças-feiras"
                                         >
-                                            <Icon name="refresh" className="w-4 h-4" /> Recalcular Pacing Dinâmico (Apenas Terças)
+                                            <Icon name="refresh" className="w-4 h-4" /> Verificar Pacing Fixo (Apenas Terças)
                                         </button>
                                     </div>
                                 )}
@@ -1449,7 +1440,7 @@
                                                 <th className="px-3 py-3 w-20">Data</th>
                                                 <th className="px-3 py-3 w-16">Dia</th>
                                                 <th className="px-3 py-3 w-24">Semana</th>
-                                                <th className="px-3 py-3 w-32">Pacing Ideal (R$)</th>
+                                                <th className="px-3 py-3 w-32">Pacing Ideal Fixo (R$)</th>
                                                 <th className="px-3 py-3 w-32">Realizado (R$)</th>
                                                 <th className="px-3 py-3 w-32">Delta</th>
                                                 <th className="px-3 py-3 w-32">Acumulado</th>
@@ -1465,8 +1456,11 @@
                                             {filteredPacingRows.map((row) => {
                                                 const isOver = row.realized > row.pacingIdeal;
                                                 return (
-                                                    <tr key={row.dateStr} className={`hover:bg-slate-50 ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
-                                                        <td className="px-3 py-3 text-slate-900 font-medium">{row.dateStr}</td>
+                                                    <tr key={row.dateStr} className={`hover:bg-slate-50 ${row.isTuesday ? 'bg-amber-50/50' : ''} ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
+                                                        <td className="px-3 py-3 text-slate-900 font-medium flex items-center gap-1.5">
+                                                            {row.dateStr}
+                                                            {row.isTuesday && <span className="bg-amber-100 text-amber-800 text-[9px] px-1.5 py-0.5 rounded font-bold" title="Dia de alteração semanal de investimento">Terça</span>}
+                                                        </td>
                                                         <td className="px-3 py-3 text-slate-500">{row.weekday}</td>
                                                         <td className="px-3 py-3 text-slate-400 text-xs">{row.weekNum}</td>
                                                         <td className="px-3 py-3 text-purple-700 font-semibold">{formatBRL(row.pacingIdeal)}</td>
@@ -1534,21 +1528,21 @@
                                 <div>
                                     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Orçamento Setado (D-1: {dMinus1DateStr})</span>
                                     <p className="text-2xl font-bold text-slate-900 mt-1">{formatBRL(campaignPacingSummary.totalSetadoD1)}</p>
-                                    <p className="text-xs text-slate-500 mt-0.5">Soma do planejado de ontem em {campaignPacingSummary.activeCount} campanhas ativas</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Soma do planejado em {campaignPacingSummary.activeCount} campanhas ativas</p>
                                 </div>
                                 <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pacing Ideal Dinâmico (D-1)</span>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pacing Médio Ideal Fixo</span>
                                     <p className="text-2xl font-bold text-purple-700 mt-1">{formatBRL(campaignPacingSummary.pacingIdealDaily)}</p>
-                                    <p className="text-xs text-slate-500 mt-0.5">Meta recalculada com o saldo atual do mês</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Meta diária linear fixa (Orçamento / Dias do Mês)</p>
                                 </div>
                                 <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status vs Pacing Dinâmico</span>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status vs Pacing Fixo</span>
                                     <div className="mt-1 flex items-center gap-2">
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${campaignPacingSummary.isOver ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                                             {campaignPacingSummary.isOver ? `Acima em +${formatBRL(campaignPacingSummary.diff)}` : `Dentro/Abaixo em ${formatBRL(campaignPacingSummary.diff)}`}
                                         </span>
                                     </div>
-                                    <p className="text-[11px] text-slate-500 mt-1">Diferença em relação ao pacing vivo</p>
+                                    <p className="text-[11px] text-slate-500 mt-1">Diferença em relação à média ideal</p>
                                 </div>
                             </div>
 
@@ -1561,7 +1555,7 @@
                                             <th className="px-4 py-3">Ferramenta</th>
                                             <th className="px-4 py-3">Status (Manual)</th>
                                             <th className="px-4 py-3 text-center">Orçamento Setado (D-1: {dMinus1DateStr})</th>
-                                            <th className="px-4 py-3 text-center">Diário de Pacing</th>
+                                            <th className="px-4 py-3 text-center">Diário de Pacing & Alteração (Terças)</th>
                                             {!isReadOnly && <th className="px-4 py-3 text-right">Ações</th>}
                                         </tr>
                                     </thead>
@@ -1613,7 +1607,7 @@
                                                                 onClick={() => setCampaignPacingModal(camp)}
                                                                 className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
                                                             >
-                                                                <Icon name="calendar" className="w-3.5 h-3.5" /> {isReadOnly ? 'Ver Diário' : 'Gerenciar Investimento Diário'}
+                                                                <Icon name="calendar" className="w-3.5 h-3.5" /> {isReadOnly ? 'Ver Diário' : 'Gerenciar Investimento'}
                                                             </button>
                                                         </td>
                                                         {!isReadOnly && (
@@ -1692,72 +1686,19 @@
                                 <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                                     <div>
                                         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                            <Icon name="calendar" className="text-blue-700" /> Investimento Diário ({selectedMonth}): {campaignPacingModal.name}
+                                            <Icon name="calendar" className="text-blue-700" /> Gestão de Orçamento ({selectedMonth}): {campaignPacingModal.name}
                                         </h3>
-                                        <p className="text-xs text-slate-500 mt-0.5">Produto (Rateio): {campaignPacingModal.product} | Canal: {campaignPacingModal.tool}</p>
+                                        <p className="text-xs text-slate-500 mt-0.5">As alterações de verba ocorrem estritamente às terças-feiras | Produto: {campaignPacingModal.product}</p>
                                     </div>
                                     <button onClick={() => setCampaignPacingModal(null)} className="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
                                 </div>
 
                                 {!isReadOnly && (
-                                    <div className="bg-blue-50/70 border border-blue-200 p-3.5 rounded-xl mb-4 flex flex-wrap items-center justify-between gap-3">
-                                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
-                                            <span>Preencher Planejado em Lote:</span>
-                                            <span>Do dia</span>
-                                            <input 
-                                                type="number" 
-                                                min="1" 
-                                                max="31" 
-                                                value={batchStartDay} 
-                                                onChange={(e) => setBatchStartDay(Number(e.target.value))}
-                                                className="w-16 bg-white border border-slate-300 rounded px-2 py-1 text-center font-bold text-slate-900"
-                                            />
-                                            <span>ao dia</span>
-                                            <input 
-                                                type="number" 
-                                                min="1" 
-                                                max="31" 
-                                                value={batchEndDay} 
-                                                onChange={(e) => setBatchEndDay(Number(e.target.value))}
-                                                className="w-16 bg-white border border-slate-300 rounded px-2 py-1 text-center font-bold text-slate-900"
-                                            />
-                                            <span>com R$</span>
-                                            <input 
-                                                type="number" 
-                                                placeholder="Ex: 1200" 
-                                                value={batchPlannedValue} 
-                                                onChange={(e) => setBatchPlannedValue(e.target.value)}
-                                                className="w-24 bg-white border border-slate-300 rounded px-2 py-1 font-bold text-blue-700"
-                                            />
+                                    <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl mb-4 flex flex-wrap items-center justify-between gap-3">
+                                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-amber-900">
+                                            <span>💡 Regra de Otimização:</span>
+                                            <span>Para preservar o aprendizado e a estabilidade das campanhas, altere os orçamentos planejados apenas nas <strong>terças-feiras</strong>.</span>
                                         </div>
-                                        <button 
-                                            type="button"
-                                            onClick={() => {
-                                                if (batchPlannedValue === "" || isNaN(Number(batchPlannedValue))) {
-                                                    alert("Por favor, digite um valor válido para aplicar no lote.");
-                                                    return;
-                                                }
-                                                const monthDaily = (campaignPacingModal.dailyData && campaignPacingModal.dailyData[selectedMonth]) || {};
-                                                const updatedMonthDaily = { ...monthDaily };
-
-                                                daysInMonth.forEach(day => {
-                                                    if (day.dateNum >= batchStartDay && day.dateNum <= batchEndDay) {
-                                                        const currentDaily = updatedMonthDaily[day.dateStr] || { planned: '', realized: '' };
-                                                        updatedMonthDaily[day.dateStr] = {
-                                                            ...currentDaily,
-                                                            planned: Number(batchPlannedValue)
-                                                        };
-                                                    }
-                                                });
-
-                                                const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
-                                                setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
-                                                alert(`Planejado atualizado com sucesso do dia ${batchStartDay} ao dia ${batchEndDay}!`);
-                                            }}
-                                            className="bg-blue-700 hover:bg-blue-800 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow transition"
-                                        >
-                                            Aplicar em Lote
-                                        </button>
                                     </div>
                                 )}
 
@@ -1766,8 +1707,8 @@
                                         <thead className="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0">
                                             <tr>
                                                 <th className="px-3 py-2">Data</th>
-                                                <th className="px-3 py-2">Dia</th>
-                                                <th className="px-3 py-2">Planejado (R$)</th>
+                                                <th className="px-3 py-2">Dia da Semana</th>
+                                                <th className="px-3 py-2">Orçamento Planejado (R$)</th>
                                                 <th className="px-3 py-2">Realizado (R$)</th>
                                             </tr>
                                         </thead>
@@ -1776,8 +1717,11 @@
                                                 const monthDaily = (campaignPacingModal.dailyData && campaignPacingModal.dailyData[selectedMonth]) || {};
                                                 const currentDaily = monthDaily[day.dateStr] || { planned: '', realized: '' };
                                                 return (
-                                                    <tr key={day.dateStr} className="hover:bg-slate-50">
-                                                        <td className="px-3 py-2 font-medium text-slate-900">{day.dateStr}</td>
+                                                    <tr key={day.dateStr} className={`hover:bg-slate-50 ${day.isTuesday ? 'bg-amber-50/50 font-semibold' : ''}`}>
+                                                        <td className="px-3 py-2 font-medium text-slate-900 flex items-center gap-1.5">
+                                                            {day.dateStr}
+                                                            {day.isTuesday && <span className="bg-amber-200 text-amber-900 text-[9px] px-1.5 py-0.5 rounded font-bold">Alteração</span>}
+                                                        </td>
                                                         <td className="px-3 py-2 text-slate-500">{day.weekday}</td>
                                                         <td className="px-3 py-2">
                                                             <input 
@@ -1791,7 +1735,7 @@
                                                                     const updatedDailyData = { ...(campaignPacingModal.dailyData || {}), [selectedMonth]: updatedMonthDaily };
                                                                     setCampaignPacingModal({ ...campaignPacingModal, dailyData: updatedDailyData });
                                                                 }}
-                                                                className="bg-slate-50 border border-slate-300 rounded px-2 py-1 w-32 text-slate-900 disabled:opacity-70 font-semibold"
+                                                                className={`bg-slate-50 border rounded px-2 py-1 w-32 text-slate-900 font-semibold disabled:opacity-70 ${day.isTuesday ? 'border-amber-400 bg-amber-50/30' : 'border-slate-300'}`}
                                                             />
                                                         </td>
                                                         <td className="px-3 py-2">
@@ -1826,7 +1770,7 @@
                                             }}
                                             className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2.5 rounded-xl font-medium transition shadow"
                                         >
-                                            Guardar e Atualizar Investimento Diário
+                                            Guardar Alterações de Orçamento
                                         </button>
                                     )}
                                     <button onClick={() => setCampaignPacingModal(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-medium transition">
@@ -1876,7 +1820,7 @@
                                         }}
                                         className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2 rounded-xl font-medium transition shadow"
                                     >
-                                        Copiar Link
+                                    Copiar Link
                                     </button>
                                     <button onClick={() => setIsShareModalOpen(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-medium transition">
                                         Fechar
