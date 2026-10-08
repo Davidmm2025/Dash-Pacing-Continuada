@@ -532,7 +532,7 @@
                 return 'Pós-Graduação';
             };
 
-            // IMPORTAÇÃO DE CSV CORRIGIDA: ATUALIZA/SOBRESCREVE O CUSTO DOS DIAS INFORMADOS NA PLANILHA, EVITANDO DUPLICAÇÃO/ACUMULAÇÃO INDESEJADA
+            // IMPORTAÇÃO DE CSV ROBUSTA: DETEÇÃO DINÂMICA DE DATAS (GOOGLE ADS & META ADS) E CORREÇÃO DE DUPLICAÇÃO DE CAMPANHAS
             const handleUniversalCSVUpload = (e) => {
                 if (isReadOnly) return;
                 const files = e.target.files;
@@ -546,18 +546,32 @@
                         const content = event.target.result;
                         const lines = content.split(/\r?\n/);
 
-                        // Agrega os custos do ficheiro por campanha, mês e dia para evitar somas cumulativas erradas
                         const fileAggregates = {};
 
                         lines.forEach(line => {
                             if (!line.trim()) return;
                             const cols = parseCSVLine(line);
-                            if (cols.length < 3) return;
+                            if (cols.length < 2) return;
 
                             const campName = cols[0];
-                            if (!campName || campName.toLowerCase().includes('campanha') || campName.toLowerCase().includes('nome da')) return;
+                            if (!campName || campName.toLowerCase().includes('campanha') || campName.toLowerCase().includes('nome da') || campName.toLowerCase().includes('campaign')) return;
 
-                            const dateStrCsv = cols[1]; // YYYY-MM-DD
+                            // Procura dinâmica pela data (funciona para Google Ads e Meta Ads em qualquer coluna)
+                            let dateStrCsv = "";
+                            for (let i = 1; i < cols.length; i++) {
+                                const val = cols[i];
+                                if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                                    dateStrCsv = val;
+                                    break;
+                                } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+                                    const parts = val.split('/');
+                                    dateStrCsv = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                    break;
+                                }
+                            }
+                            if (!dateStrCsv && cols[1] && /^\d/.test(cols[1])) {
+                                dateStrCsv = cols[1];
+                            }
                             if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStrCsv)) return;
 
                             const [year, month, day] = dateStrCsv.split('-');
@@ -567,12 +581,21 @@
                             let toolType = campName.toUpperCase().includes('FB') ? 'Meta Ads' : 'Google Ads';
                             let cost = 0;
 
-                            if (toolType === 'Google Ads' && (cols[2] === 'BRL' || cols.length >= 4)) {
+                            if (toolType === 'Google Ads' && cols.length >= 4) {
                                 cost = parseCost(cols[3] !== undefined && !isNaN(parseCost(cols[3])) && cols[3].length > 0 ? cols[3] : cols[cols.length - 1]);
                             } else {
-                                cost = parseCost(cols[cols.length - 1]);
+                                // Meta Ads: varredura da direita para a esquerda à procura de um valor numérico de custo válido
+                                for (let i = cols.length - 1; i >= 1; i--) {
+                                    const parsed = parseCost(cols[i]);
+                                    if (!isNaN(parsed) && parsed > 0) {
+                                        cost = parsed;
+                                        break;
+                                    }
+                                }
+                                if (cost === 0) {
+                                    cost = parseCost(cols[cols.length - 1]);
+                                }
                             }
-
                             if (isNaN(cost)) cost = 0;
 
                             const targetProduct = resolveProductForCampaign(campName);
@@ -583,17 +606,17 @@
                             if (!fileAggregates[campName].months[monthKey]) {
                                 fileAggregates[campName].months[monthKey] = {};
                             }
-                            // Soma apenas linhas múltiplas dentro do próprio ficheiro (ex: diferentes ad sets do mesmo dia)
+                            // Agrega linhas múltiplas da mesma campanha no mesmo dia (ex: ad sets diferentes)
                             fileAggregates[campName].months[monthKey][dateKey] = (fileAggregates[campName].months[monthKey][dateKey] || 0) + cost;
                         });
 
                         let importedTotal = 0;
 
-                        // Aplica os dados do ficheiro atualizando/sobrescrevendo o realizado daquele dia específico
                         Object.entries(fileAggregates).forEach(([campName, campData]) => {
                             const { product, tool, months } = campData;
 
-                            let camp = updatedCampaigns.find(c => c && c.name === campName && c.product === product && c.tool === tool);
+                            // Localiza estritamente pelo nome exato para evitar criar objetos duplicados
+                            let camp = updatedCampaigns.find(c => c && c.name.trim() === campName.trim());
                             if (!camp) {
                                 camp = {
                                     id: Date.now() + Math.random(),
@@ -604,6 +627,8 @@
                                     dailyData: {}
                                 };
                                 updatedCampaigns.push(camp);
+                            } else {
+                                camp.tool = tool;
                             }
 
                             const campDaily = { ...(camp.dailyData || {}) };
@@ -615,7 +640,7 @@
                                     const existingDay = monthDaily[dateKey] || { planned: '', realized: 0, inscritos: '', matriculados: '' };
                                     monthDaily[dateKey] = {
                                         ...existingDay,
-                                        realized: totalCost // Sobrescreve com o valor correto do ficheiro, sem acumular duplicações
+                                        realized: totalCost // Atualiza/sobrescreve o custo exato do ficheiro sem duplicar
                                     };
                                     importedTotal++;
                                 });
@@ -1357,7 +1382,7 @@
                                 </div>
                             </div>
 
-                            {/* TABELA DE PACING COM CORREÇÃO RIGOROSA: MAIOR QUE PLANEJADO = OVERBUDGET (VERMELHO) */}
+                            {/* TABELA DE PACING */}
                             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm text-slate-700">
