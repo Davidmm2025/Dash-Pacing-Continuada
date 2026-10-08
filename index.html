@@ -259,6 +259,20 @@
                 return days;
             }, [selectedMonth]);
 
+            // Determinar o dia D-1 (dia anterior ao atual)
+            const dMinus1DateStr = useMemo(() => {
+                const now = new Date();
+                const targetYear = Number((selectedMonth || currentMonthDefault).split('-')[0]);
+                const targetMonth = Number((selectedMonth || currentMonthDefault).split('-')[1]);
+                
+                // Se o mês selecionado for o atual, pegamos ontem (now.getDate() - 1)
+                // Se for outro mês fechado ou futuro, pegamos o último dia ou primeiro dia, mas para teste padrão de outubro usamos d-1:
+                const d1 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+                const day = String(d1.getDate()).padStart(2, '0');
+                const month = String(d1.getMonth() + 1).padStart(2, '0');
+                return `${day}/${month}`;
+            }, [selectedMonth]);
+
             useEffect(() => {
                 if (!window.db) return;
                 const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v3");
@@ -403,7 +417,6 @@
                 return { totalBudget, totalSpent, totalPct, googleSpent, metaSpent, googlePct, metaPct, totalCpq, totalMatriculados, totalCpqGoal, totalMatriculadosGoal, cpqPct, matriculadosPct, avgCpqCost, avgCpaCost };
             }, [budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, selectedMonth]);
 
-            // PACING ROWS COM A NOVA ORDEM DE COLUNAS SOLICITADA
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDaysCount = daysInMonth.length || 30;
@@ -447,9 +460,7 @@
                     const balance = prodBudget - accumulatedGlobal; 
                     const delta = dayRealized - pacingIdeal;
 
-                    // CPQ = Investimento realizado / pelo número de inscritos qualificados do dia
                     const dayCpqCost = dayCpq > 0 ? dayRealized / dayCpq : 0;
-                    // CPA = Investimento realizado / pelo número de matriculados do dia
                     const dayCpaCost = dayMatriculados > 0 ? dayRealized / dayMatriculados : 0;
 
                     let status = "Dentro do Pacing";
@@ -486,6 +497,38 @@
                     return true;
                 });
             }, [pacingRows, pacingFilter]);
+
+            // Resumo das campanhas ativas comparando com o Pacing Ideal
+            const campaignPacingSummary = useMemo(() => {
+                const activeCamps = (campaigns || []).filter(c => c && c.product === selectedProduct && c.status === "Ativa" && (selectedTool === 'Todas' || c.tool === selectedTool));
+                
+                let totalSetadoD1 = 0;
+                activeCamps.forEach(camp => {
+                    const monthDaily = camp?.dailyData?.[selectedMonth];
+                    if (monthDaily && typeof monthDaily === 'object') {
+                        const d1Entry = monthDaily[dMinus1DateStr];
+                        if (d1Entry && d1Entry.planned !== '') {
+                            totalSetadoD1 += Number(d1Entry.planned) || 0;
+                        }
+                    }
+                });
+
+                // Pacing ideal diário para o produto/ferramenta
+                const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
+                const totalDaysCount = daysInMonth.length || 30;
+                const pacingIdealDaily = prodBudget / totalDaysCount;
+
+                const diff = totalSetadoD1 - pacingIdealDaily;
+                const isOver = diff > 0;
+
+                return {
+                    totalSetadoD1,
+                    pacingIdealDaily,
+                    diff,
+                    isOver,
+                    activeCount: activeCamps.length
+                };
+            }, [campaigns, selectedProduct, selectedTool, selectedMonth, dMinus1DateStr, currentMonthBudgets, daysInMonth]);
 
             const updateGridCell = (dayStr, field, val) => {
                 if (isReadOnly) return;
@@ -1163,7 +1206,6 @@
                                 </div>
                             </div>
 
-                            {/* GRÁFICOS RESTAURADOS E EXPANDIDOS NA VISÃO GERAL */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                                     <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
@@ -1440,7 +1482,6 @@
                                 </div>
                             </div>
 
-                            {/* TABELA DE PACING COM A ORDEM EXATA SOLICITADA */}
                             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm text-slate-700 min-w-[1200px]">
@@ -1477,7 +1518,6 @@
                                                         <td className="px-3 py-3 text-slate-900">{formatBRL(row.accumulated)}</td>
                                                         <td className="px-3 py-3 font-bold text-emerald-600">{formatBRL(row.balance)}</td>
                                                         
-                                                        {/* INSCRITOS QUALIFICADOS (INPUT) */}
                                                         <td className="px-3 py-3">
                                                             <div className="flex items-center gap-1.5">
                                                                 <input 
@@ -1492,12 +1532,10 @@
                                                             </div>
                                                         </td>
 
-                                                        {/* CPQ (Custo por Inscrito Qualificado do dia) */}
                                                         <td className="px-3 py-3 font-bold text-amber-700">
                                                             {formatBRL(row.cpqCost)}
                                                         </td>
 
-                                                        {/* MATRICULADOS (INPUT) */}
                                                         <td className="px-3 py-3">
                                                             <div className="flex items-center gap-1.5">
                                                                 <input 
@@ -1512,7 +1550,6 @@
                                                             </div>
                                                         </td>
 
-                                                        {/* CPA (Custo por Aluno do dia) */}
                                                         <td className="px-3 py-3 font-bold text-purple-700">
                                                             {formatBRL(row.cpaCost)}
                                                         </td>
@@ -1534,6 +1571,29 @@
 
                     {activeTab === "campaigns" && (
                         <div className="space-y-6">
+                            {/* CARD DE RESUMO DO ORÇAMENTO SETADO (D-1) VS PACING IDEAL */}
+                            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Orçamento Setado (D-1: {dMinus1DateStr})</span>
+                                    <p className="text-2xl font-bold text-slate-900 mt-1">{formatBRL(campaignPacingSummary.totalSetadoD1)}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Soma do planejado de ontem em {campaignPacingSummary.activeCount} campanhas ativas</p>
+                                </div>
+                                <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pacing Ideal Diário (Referência)</span>
+                                    <p className="text-2xl font-bold text-purple-700 mt-1">{formatBRL(campaignPacingSummary.pacingIdealDaily)}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Meta proporcional por dia para o mês</p>
+                                </div>
+                                <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status vs Pacing Ideal (D-1)</span>
+                                    <div className="mt-1 flex items-center gap-2">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${campaignPacingSummary.isOver ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                                            {campaignPacingSummary.isOver ? `Acima em +${formatBRL(campaignPacingSummary.diff)}` : `Dentro/Abaixo em ${formatBRL(campaignPacingSummary.diff)}`}
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 mt-1">Diferença exata em relação ao pacing ideal</p>
+                                </div>
+                            </div>
+
                             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <table className="w-full text-left text-sm text-slate-700">
                                     <thead className="bg-slate-100 text-slate-600 uppercase text-xs border-b border-slate-200">
@@ -1542,7 +1602,7 @@
                                             <th className="px-4 py-3">Produto (Rateio)</th>
                                             <th className="px-4 py-3">Ferramenta</th>
                                             <th className="px-4 py-3">Status</th>
-                                            <th className="px-4 py-3 text-center">Investimento Setado ({selectedMonth})</th>
+                                            <th className="px-4 py-3 text-center">Orçamento Setado (D-1: {dMinus1DateStr})</th>
                                             <th className="px-4 py-3 text-center">Diário de Pacing</th>
                                             {!isReadOnly && <th className="px-4 py-3 text-right">Ações</th>}
                                         </tr>
@@ -1551,13 +1611,14 @@
                                         {(campaigns || [])
                                             .filter(c => c && c.product === selectedProduct && (selectedTool === 'Todas' || c.tool === selectedTool))
                                             .map(camp => {
-                                                // Soma o orçamento setado em todas as datas do mês para esta campanha
-                                                let campTotalPlanned = 0;
+                                                // Mostrar apenas o orçamento setado no dia anterior (d-1)
+                                                let campPlannedD1 = 0;
                                                 const monthDaily = camp?.dailyData?.[selectedMonth];
                                                 if (monthDaily && typeof monthDaily === 'object') {
-                                                    Object.values(monthDaily).forEach(d => {
-                                                        campTotalPlanned += Number(d?.planned) || 0;
-                                                    });
+                                                    const d1Entry = monthDaily[dMinus1DateStr];
+                                                    if (d1Entry && d1Entry.planned !== '') {
+                                                        campPlannedD1 = Number(d1Entry.planned) || 0;
+                                                    }
                                                 }
                                                 return (
                                                     <tr key={camp.id} className="hover:bg-slate-50">
@@ -1573,8 +1634,8 @@
                                                                 {camp.status}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-3 text-center font-bold text-slate-800">
-                                                            {formatBRL(campTotalPlanned)}
+                                                        <td className="px-4 py-3 text-center font-bold text-blue-700">
+                                                            {formatBRL(campPlannedD1)}
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
                                                             <button 
