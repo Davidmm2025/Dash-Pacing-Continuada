@@ -451,10 +451,6 @@
                     const balance = prodBudget - accumulated;
                     const delta = realized - planned;
 
-                    // CORREÇÃO RIGOROSA DE STATUS E CORES:
-                    // Se realizou mais que o planejado (realized > planned), é Overbudget (vermelho).
-                    // Se realizou menos que o planejado (realized < planned), é Underbudget (verde).
-                    // Se for igual, Dentro do Pacing.
                     let status = "Dentro do Pacing";
                     if (realized > planned) {
                         status = "Overbudget";
@@ -536,12 +532,12 @@
                 return 'Pós-Graduação';
             };
 
+            // IMPORTAÇÃO DE CSV CORRIGIDA: ATUALIZA/SOBRESCREVE O CUSTO DOS DIAS INFORMADOS NA PLANILHA, EVITANDO DUPLICAÇÃO/ACUMULAÇÃO INDESEJADA
             const handleUniversalCSVUpload = (e) => {
                 if (isReadOnly) return;
                 const files = e.target.files;
                 if (!files || files.length === 0) return;
 
-                let importedTotal = 0;
                 let updatedCampaigns = JSON.parse(JSON.stringify(campaigns));
 
                 Array.from(files).forEach(file => {
@@ -549,6 +545,9 @@
                     reader.onload = (event) => {
                         const content = event.target.result;
                         const lines = content.split(/\r?\n/);
+
+                        // Agrega os custos do ficheiro por campanha, mês e dia para evitar somas cumulativas erradas
+                        const fileAggregates = {};
 
                         lines.forEach(line => {
                             if (!line.trim()) return;
@@ -578,13 +577,29 @@
 
                             const targetProduct = resolveProductForCampaign(campName);
 
-                            let camp = updatedCampaigns.find(c => c && c.name === campName && c.product === targetProduct && c.tool === toolType);
+                            if (!fileAggregates[campName]) {
+                                fileAggregates[campName] = { product: targetProduct, tool: toolType, months: {} };
+                            }
+                            if (!fileAggregates[campName].months[monthKey]) {
+                                fileAggregates[campName].months[monthKey] = {};
+                            }
+                            // Soma apenas linhas múltiplas dentro do próprio ficheiro (ex: diferentes ad sets do mesmo dia)
+                            fileAggregates[campName].months[monthKey][dateKey] = (fileAggregates[campName].months[monthKey][dateKey] || 0) + cost;
+                        });
+
+                        let importedTotal = 0;
+
+                        // Aplica os dados do ficheiro atualizando/sobrescrevendo o realizado daquele dia específico
+                        Object.entries(fileAggregates).forEach(([campName, campData]) => {
+                            const { product, tool, months } = campData;
+
+                            let camp = updatedCampaigns.find(c => c && c.name === campName && c.product === product && c.tool === tool);
                             if (!camp) {
                                 camp = {
                                     id: Date.now() + Math.random(),
                                     name: campName,
-                                    product: targetProduct,
-                                    tool: toolType,
+                                    product: product,
+                                    tool: tool,
                                     status: "Ativa",
                                     dailyData: {}
                                 };
@@ -592,21 +607,27 @@
                             }
 
                             const campDaily = { ...(camp.dailyData || {}) };
-                            const monthDaily = { ...(campDaily[monthKey] || {}) };
-                            const existingDay = monthDaily[dateKey] || { planned: '', realized: 0, inscritos: '', matriculados: '' };
 
-                            monthDaily[dateKey] = {
-                                ...existingDay,
-                                realized: (Number(existingDay.realized) || 0) + cost
-                            };
+                            Object.entries(months).forEach(([monthKey, datesMap]) => {
+                                const monthDaily = { ...(campDaily[monthKey] || {}) };
 
-                            campDaily[monthKey] = monthDaily;
+                                Object.entries(datesMap).forEach(([dateKey, totalCost]) => {
+                                    const existingDay = monthDaily[dateKey] || { planned: '', realized: 0, inscritos: '', matriculados: '' };
+                                    monthDaily[dateKey] = {
+                                        ...existingDay,
+                                        realized: totalCost // Sobrescreve com o valor correto do ficheiro, sem acumular duplicações
+                                    };
+                                    importedTotal++;
+                                });
+
+                                campDaily[monthKey] = monthDaily;
+                            });
+
                             camp.dailyData = campDaily;
-                            importedTotal++;
                         });
 
                         saveDataToCloud(budgetsByMonth, goalsByMonth, updatedCampaigns, campaignMap);
-                        alert(`Sucesso! Ficheiro processado. ${importedTotal} registos distribuídos automaticamente por rateio.`);
+                        alert(`Sucesso! Ficheiro processado. ${importedTotal} registos importados/atualizados corretamente.`);
                         e.target.value = '';
                     };
                     reader.readAsText(file, 'UTF-8');
