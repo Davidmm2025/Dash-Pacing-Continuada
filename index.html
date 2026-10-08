@@ -54,7 +54,6 @@
                 case 'sparkles': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>;
                 case 'download': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>;
                 case 'share': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>;
-                case 'plus': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
                 case 'trash': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
                 case 'git-compare': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></svg>;
                 case 'pie-chart': return <svg className={cls} {...props} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>;
@@ -189,9 +188,7 @@
                 }
             });
 
-            // Armazena dados globais mensais (Ex: Matriculados Digitais e CPQ inseridos por dia/mês)
             const [monthlyGridData, setMonthlyGridData] = useState({});
-
             const [campaigns, setCampaigns] = useState([]);
 
             const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -406,7 +403,7 @@
                 return { totalBudget, totalSpent, totalPct, googleSpent, metaSpent, googlePct, metaPct, totalCpq, totalMatriculados, totalCpqGoal, totalMatriculadosGoal, cpqPct, matriculadosPct, avgCpqCost, avgCpaCost };
             }, [budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, selectedMonth]);
 
-            // PACING ROWS COM SEPARAÇÃO DE META IDEAL E INVESTIMENTO EM FERRAMENTA (INDEPENDENTES)
+            // PACING ROWS COM A NOVA ORDEM DE COLUNAS SOLICITADA
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDaysCount = daysInMonth.length || 30;
@@ -421,10 +418,8 @@
                 const prodGrid = (monthlyGridData && monthlyGridData[selectedMonth] && monthlyGridData[selectedMonth][selectedProduct]) || {};
 
                 return daysInMonth.map((day) => {
-                    // Meta Ideal gerada pela IA (divisão equilibrada do Orçamento BAU BAU por dia)
-                    const metaIdeal = prodBudget / totalDaysCount;
+                    const pacingIdeal = prodBudget / totalDaysCount;
 
-                    let toolInvestimento = 0;
                     let dayRealized = 0;
                     let dayRealizedGlobal = 0;
 
@@ -432,12 +427,9 @@
                         const dEntry = c?.dailyData?.[selectedMonth]?.[day.dateStr];
                         if (dEntry) {
                             const r = Number(dEntry.realized) || 0;
-                            const p = Number(dEntry.planned) || 0;
-                            
                             dayRealizedGlobal += r;
 
                             if (selectedTool === "Todas" || c.tool === selectedTool) {
-                                toolInvestimento += p > 0 ? p : 0;
                                 dayRealized += r;
                             }
                         }
@@ -453,25 +445,31 @@
                     accumulatedMatriculados += dayMatriculados;
 
                     const balance = prodBudget - accumulatedGlobal; 
-                    const delta = dayRealized - metaIdeal;
+                    const delta = dayRealized - pacingIdeal;
+
+                    // CPQ = Investimento realizado / pelo número de inscritos qualificados do dia
+                    const dayCpqCost = dayCpq > 0 ? dayRealized / dayCpq : 0;
+                    // CPA = Investimento realizado / pelo número de matriculados do dia
+                    const dayCpaCost = dayMatriculados > 0 ? dayRealized / dayMatriculados : 0;
 
                     let status = "Dentro do Pacing";
-                    if (dayRealized > metaIdeal) {
+                    if (dayRealized > pacingIdeal) {
                         status = "Overbudget";
-                    } else if (dayRealized < metaIdeal) {
+                    } else if (dayRealized < pacingIdeal) {
                         status = "Underbudget";
                     }
 
                     return { 
                         ...day, 
-                        metaIdeal,
-                        toolInvestimento,
+                        pacingIdeal,
                         realized: dayRealized, 
                         delta, 
                         accumulated, 
                         balance, 
                         cpqVal: dayCpq, 
+                        cpqCost: dayCpqCost,
                         matriculadosVal: dayMatriculados,
+                        cpaCost: dayCpaCost,
                         accumulatedCpq,
                         accumulatedMatriculados,
                         status 
@@ -704,7 +702,7 @@
                         });
 
                         saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap);
-                        alert(`Sucesso! Ficheiro processado e sincronizado. ${importedTotal} dias foram atualizados de forma exata e segura (sem duplicação).`);
+                        alert(`Sucesso! Ficheiro processado e sincronizado. ${importedTotal} dias foram atualizados de forma exata e segura.`);
                         e.target.value = '';
                     };
                     reader.readAsText(file, 'UTF-8');
@@ -713,8 +711,7 @@
 
             const handleGeneratePacing = () => {
                 if (isReadOnly) return;
-                // O botão Gerar Pacing agora atua estritamente sobre a Meta Ideal da IA sem interferir no Investimento em Ferramenta
-                alert("Meta Ideal recalculada com sucesso pela IA para " + selectedProduct + "!");
+                alert("Pacing Ideal recalculado com sucesso pela IA para " + selectedProduct + "!");
             };
 
             const updateBudgetAndGoalsForProduct = (prodName, newBudget, newCpq, newMatriculados) => {
@@ -766,7 +763,6 @@
                 const balance = budget - globalRealized; 
                 
                 const pastDays = (pacingRows || []).filter(r => r.isPast);
-                const lastPast = pastDays[pastDays.length - 1] || pacingRows[0];
                 const futureDaysCount = (pacingRows || []).filter(r => !r.isPast && !r.isToday).length || 1;
                 const suggestedPacing = balance > 0 ? balance / futureDaysCount : 0;
 
@@ -785,8 +781,6 @@
                     cpaCost,
                     targetCpqCost,
                     targetCpaCost,
-                    lastDayRealized: lastPast?.realized || 0,
-                    lastDayStatus: lastPast?.status || "Normal",
                     suggestedPacing
                 };
             }, [selectedProduct, currentMonthBudgets, currentMonthGoals, pacingRows, campaigns, selectedMonth]);
@@ -862,12 +856,7 @@
                     let aiMessage = `🤖 Projeção Inteligente de Fechamento de Mês (${selectedProduct} - ${selectedMonth}):\n\n`;
                     aiMessage += `- Orçamento Disponível (Global): ${formatBRL(currentKPIs.budget)}\n`;
                     aiMessage += `- Consumo Projetado Global (Run-Rate): ${formatBRL(globalRunRateSpent)}\n`;
-                    
-                    if (selectedTool !== "Todas") {
-                        aiMessage += `- Consumo Projetado (${selectedTool}): ${formatBRL(runRateSpentFiltered)}\n`;
-                    }
-                    
-                    aiMessage += `- CPQ Projetado ${selectedTool !== 'Todas' ? `(${selectedTool})` : ''}: ${formatNum(runRateCpq)} (Meta Global: ${formatNum(currentKPIs.cpqGoal)})\n`;
+                    aiMessage += `- CPQ Projetado: ${formatNum(runRateCpq)} (Meta Global: ${formatNum(currentKPIs.cpqGoal)})\n`;
                     aiMessage += `- Matriculados Digitais Projetados: ${formatNum(runRateMat)} (Meta Global: ${formatNum(currentKPIs.matriculadosGoal)})\n`;
                     aiMessage += `- CPQ Médio Projetado: ${formatBRL(runRateCpq > 0 ? runRateSpentFiltered / runRateCpq : 0)} (Meta: ${formatBRL(currentKPIs.targetCpqCost)})\n`;
                     aiMessage += `- CPA Médio Projetado: ${formatBRL(runRateMat > 0 ? runRateSpentFiltered / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpaCost)})\n\n`;
@@ -933,7 +922,7 @@
             }
 
             return (
-                <div className="max-w-[95rem] mx-auto px-4 py-6">
+                <div className="max-w-[98rem] mx-auto px-4 py-6">
                     <div className="bg-unicesumar text-white rounded-2xl p-5 shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
                             <div className="flex items-center gap-2">
@@ -1173,6 +1162,111 @@
                                     <p className="text-xs text-emerald-600 font-semibold mt-1">Atingimento: {overviewGlobalStats.matriculadosPct}% (CPA: {formatBRL(overviewGlobalStats.avgCpaCost)})</p>
                                 </div>
                             </div>
+
+                            {/* GRÁFICOS RESTAURADOS E EXPANDIDOS NA VISÃO GERAL */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                        <Icon name="pie-chart" className="text-blue-700" /> Consumo vs Orçamento por Produto
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {PRODUCTS.map(prod => {
+                                            const b = currentMonthBudgets[prod] || 0;
+                                            const spent = totalSpentByProduct[prod] || 0;
+                                            const pct = b > 0 ? Math.min(Math.round((spent / b) * 100), 100) : 0;
+                                            return (
+                                                <div key={prod} className="text-xs">
+                                                    <div className="flex justify-between font-semibold text-slate-700 mb-1">
+                                                        <span>{prod}</span>
+                                                        <span>{formatBRL(spent)} / {formatBRL(b)} ({pct}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                        <div className={`h-full rounded-full ${pct > 100 ? 'bg-red-500' : 'bg-blue-600'}`} style={{ width: `${pct}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                        <Icon name="trending" className="text-emerald-700" /> Atingimento de Metas (Matriculados)
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {PRODUCTS.map(prod => {
+                                            const goalObj = (goalsByMonth && goalsByMonth[selectedMonth] && goalsByMonth[selectedMonth][prod]) || { matriculados: 0 };
+                                            const goalMat = goalObj.matriculados || 1;
+                                            let realMat = 0;
+                                            const prodGrid = (monthlyGridData && monthlyGridData[selectedMonth] && monthlyGridData[selectedMonth][prod]) || {};
+                                            Object.values(prodGrid).forEach(d => {
+                                                realMat += Number(d?.matriculadosVal) || 0;
+                                            });
+                                            const pctMat = Math.min(Math.round((realMat / goalMat) * 100), 100);
+                                            return (
+                                                <div key={prod} className="text-xs">
+                                                    <div className="flex justify-between font-semibold text-slate-700 mb-1">
+                                                        <span>{prod}</span>
+                                                        <span>{formatNum(realMat)} / {formatNum(goalMat)} mat. ({pctMat}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pctMat}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm p-5">
+                                <h3 className="text-lg font-bold text-slate-900 mb-4">Desempenho Consolidado por Produto</h3>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm text-slate-700">
+                                        <thead className="bg-slate-100 text-slate-600 uppercase text-xs border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-4 py-3">Produto</th>
+                                                <th className="px-4 py-3">Orçamento BAU</th>
+                                                <th className="px-4 py-3">Consumo Realizado</th>
+                                                <th className="px-4 py-3">CPQ (Real / Meta)</th>
+                                                <th className="px-4 py-3 text-amber-700 font-bold">CPQ (R$)</th>
+                                                <th className="px-4 py-3">Matriculados (Real / Meta)</th>
+                                                <th className="px-4 py-3 text-purple-700 font-bold">CPA (R$)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-200">
+                                            {PRODUCTS.map(prod => {
+                                                const budget = Number(currentMonthBudgets[prod]) || 0;
+                                                const spent = totalSpentByProduct[prod] || 0;
+                                                const goalObj = (goalsByMonth && goalsByMonth[selectedMonth] && goalsByMonth[selectedMonth][prod]) || { cpq: 0, matriculados: 0 };
+                                                
+                                                let prodCpq = 0;
+                                                let prodMatriculados = 0;
+                                                const prodGrid = (monthlyGridData && monthlyGridData[selectedMonth] && monthlyGridData[selectedMonth][prod]) || {};
+                                                Object.values(prodGrid).forEach(d => {
+                                                    prodCpq += Number(d?.cpqVal) || 0;
+                                                    prodMatriculados += Number(d?.matriculadosVal) || 0;
+                                                });
+
+                                                const cpqCost = prodCpq > 0 ? spent / prodCpq : 0;
+                                                const cpaCost = prodMatriculados > 0 ? spent / prodMatriculados : 0;
+
+                                                return (
+                                                    <tr key={prod} className="hover:bg-slate-50">
+                                                        <td className="px-4 py-3 font-semibold text-slate-900">{prod}</td>
+                                                        <td className="px-4 py-3 font-medium">{formatBRL(budget)}</td>
+                                                        <td className="px-4 py-3 font-semibold text-blue-700">{formatBRL(spent)}</td>
+                                                        <td className="px-4 py-3">{formatNum(prodCpq)} / {formatNum(goalObj.cpq)}</td>
+                                                        <td className="px-4 py-3 font-bold text-amber-700">{formatBRL(cpqCost)}</td>
+                                                        <td className="px-4 py-3">{formatNum(prodMatriculados)} / {formatNum(goalObj.matriculados)}</td>
+                                                        <td className="px-4 py-3 font-bold text-purple-700">{formatBRL(cpaCost)}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -1337,45 +1431,45 @@
                                     <span className="text-xs font-semibold text-emerald-600">{currentKPIs.matriculadosPct}% atingido</span>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPQ (Real / Meta)</span>
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPQ Médio (Real / Meta)</span>
                                     <p className="text-lg font-bold text-amber-700 mt-1">{formatBRL(currentKPIs.cpqCost)} <span className="text-[10px] font-normal text-slate-400">({formatBRL(currentKPIs.targetCpqCost)})</span></p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPA (Real / Meta)</span>
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">CPA Médio (Real / Meta)</span>
                                     <p className="text-lg font-bold text-purple-700 mt-1">{formatBRL(currentKPIs.cpaCost)} <span className="text-[10px] font-normal text-slate-400">({formatBRL(currentKPIs.targetCpaCost)})</span></p>
                                 </div>
                             </div>
 
-                            {/* TABELA DE PACING COM LARGURAS AMPLIADAS E INPUTS DE CPQ / MATRICULADOS DIGITAIS */}
+                            {/* TABELA DE PACING COM A ORDEM EXATA SOLICITADA */}
                             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm text-slate-700 min-w-[1100px]">
+                                    <table className="w-full text-left text-sm text-slate-700 min-w-[1200px]">
                                         <thead className="bg-slate-100 text-slate-600 uppercase text-xs border-b border-slate-200">
                                             <tr>
                                                 <th className="px-3 py-3 w-20">Data</th>
                                                 <th className="px-3 py-3 w-16">Dia</th>
                                                 <th className="px-3 py-3 w-24">Semana</th>
-                                                <th className="px-3 py-3 w-32">Meta Ideal (R$)</th>
-                                                <th className="px-3 py-3 w-36">Investimento Ferramenta (R$)</th>
+                                                <th className="px-3 py-3 w-32">Pacing Ideal (R$)</th>
                                                 <th className="px-3 py-3 w-32">Realizado (R$)</th>
                                                 <th className="px-3 py-3 w-32">Delta</th>
                                                 <th className="px-3 py-3 w-32">Acumulado</th>
-                                                <th className="px-3 py-3 w-32">Saldo (Global)</th>
-                                                <th className="px-3 py-3 w-40">CPQ (Dia / Acum)</th>
-                                                <th className="px-3 py-3 w-40">Matriculados Digitais (Dia / Acum)</th>
+                                                <th className="px-3 py-3 w-32">Saldo</th>
+                                                <th className="px-3 py-3 w-36">Inscritos Qualificados</th>
+                                                <th className="px-3 py-3 w-32 text-amber-700 font-bold">CPQ (R$)</th>
+                                                <th className="px-3 py-3 w-32">Matriculados</th>
+                                                <th className="px-3 py-3 w-32 text-purple-700 font-bold">CPA (R$)</th>
                                                 <th className="px-3 py-3 w-32">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-200">
                                             {filteredPacingRows.map((row) => {
-                                                const isOver = row.realized > row.metaIdeal;
+                                                const isOver = row.realized > row.pacingIdeal;
                                                 return (
                                                     <tr key={row.dateStr} className={`hover:bg-slate-50 ${row.isToday ? 'bg-blue-50/60 font-semibold' : ''}`}>
                                                         <td className="px-3 py-3 text-slate-900 font-medium">{row.dateStr}</td>
                                                         <td className="px-3 py-3 text-slate-500">{row.weekday}</td>
                                                         <td className="px-3 py-3 text-slate-400 text-xs">{row.weekNum}</td>
-                                                        <td className="px-3 py-3 text-purple-700 font-semibold">{formatBRL(row.metaIdeal)}</td>
-                                                        <td className="px-3 py-3 font-semibold text-slate-800">{formatBRL(row.toolInvestimento)}</td>
+                                                        <td className="px-3 py-3 text-purple-700 font-semibold">{formatBRL(row.pacingIdeal)}</td>
                                                         <td className="px-3 py-3 font-semibold text-blue-700">{formatBRL(row.realized)}</td>
                                                         <td className={`px-3 py-3 font-bold ${isOver ? 'text-red-600' : 'text-emerald-600'}`}>
                                                             {row.delta > 0 ? `+${formatBRL(row.delta)}` : formatBRL(row.delta)}
@@ -1383,7 +1477,7 @@
                                                         <td className="px-3 py-3 text-slate-900">{formatBRL(row.accumulated)}</td>
                                                         <td className="px-3 py-3 font-bold text-emerald-600">{formatBRL(row.balance)}</td>
                                                         
-                                                        {/* COLUNA CPQ EDITÁVEL DIRETAMENTE */}
+                                                        {/* INSCRITOS QUALIFICADOS (INPUT) */}
                                                         <td className="px-3 py-3">
                                                             <div className="flex items-center gap-1.5">
                                                                 <input 
@@ -1394,11 +1488,16 @@
                                                                     onChange={(e) => updateGridCell(row.dateStr, 'cpqVal', e.target.value)}
                                                                     className="w-16 bg-slate-50 border border-slate-300 rounded px-1.5 py-1 text-slate-900 text-xs font-bold text-center disabled:opacity-70"
                                                                 />
-                                                                <span className="text-xs text-slate-400 font-normal">({row.accumulatedCpq})</span>
+                                                                <span className="text-[10px] text-slate-400">({row.accumulatedCpq})</span>
                                                             </div>
                                                         </td>
 
-                                                        {/* COLUNA MATRICULADOS DIGITAIS EDITÁVEL DIRETAMENTE */}
+                                                        {/* CPQ (Custo por Inscrito Qualificado do dia) */}
+                                                        <td className="px-3 py-3 font-bold text-amber-700">
+                                                            {formatBRL(row.cpqCost)}
+                                                        </td>
+
+                                                        {/* MATRICULADOS (INPUT) */}
                                                         <td className="px-3 py-3">
                                                             <div className="flex items-center gap-1.5">
                                                                 <input 
@@ -1409,8 +1508,13 @@
                                                                     onChange={(e) => updateGridCell(row.dateStr, 'matriculadosVal', e.target.value)}
                                                                     className="w-16 bg-slate-50 border border-slate-300 rounded px-1.5 py-1 text-emerald-700 text-xs font-bold text-center disabled:opacity-70"
                                                                 />
-                                                                <span className="text-xs text-slate-400 font-normal">({row.accumulatedMatriculados})</span>
+                                                                <span className="text-[10px] text-slate-400">({row.accumulatedMatriculados})</span>
                                                             </div>
+                                                        </td>
+
+                                                        {/* CPA (Custo por Aluno do dia) */}
+                                                        <td className="px-3 py-3 font-bold text-purple-700">
+                                                            {formatBRL(row.cpaCost)}
                                                         </td>
 
                                                         <td className="px-3 py-3">
@@ -1438,50 +1542,64 @@
                                             <th className="px-4 py-3">Produto (Rateio)</th>
                                             <th className="px-4 py-3">Ferramenta</th>
                                             <th className="px-4 py-3">Status</th>
-                                            <th className="px-4 py-3 text-center">Pacing & Investimento Diário ({selectedMonth})</th>
+                                            <th className="px-4 py-3 text-center">Investimento Setado ({selectedMonth})</th>
+                                            <th className="px-4 py-3 text-center">Diário de Pacing</th>
                                             {!isReadOnly && <th className="px-4 py-3 text-right">Ações</th>}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200">
                                         {(campaigns || [])
                                             .filter(c => c && c.product === selectedProduct && (selectedTool === 'Todas' || c.tool === selectedTool))
-                                            .map(camp => (
-                                            <tr key={camp.id} className="hover:bg-slate-50">
-                                                <td className="px-4 py-3 font-semibold text-slate-900">{camp.name}</td>
-                                                <td className="px-4 py-3">{camp.product}</td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${camp.tool === 'Google Ads' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
-                                                        {camp.tool}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                        {camp.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <button 
-                                                        onClick={() => setCampaignPacingModal(camp)}
-                                                        className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-                                                    >
-                                                        <Icon name="calendar" className="w-3.5 h-3.5" /> {isReadOnly ? 'Ver Diário' : 'Gerenciar Investimento Diário'}
-                                                    </button>
-                                                </td>
-                                                {!isReadOnly && (
-                                                    <td className="px-4 py-3 text-right">
-                                                        <button 
-                                                            onClick={() => {
-                                                                const newCamps = (campaigns || []).filter(c => c && c.id !== camp.id);
-                                                                saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, newCamps, campaignMap);
-                                                            }}
-                                                            className="text-red-500 hover:text-red-700 p-1 rounded"
-                                                        >
-                                                            <Icon name="trash" className="w-4 h-4" />
-                                                        </button>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))}
+                                            .map(camp => {
+                                                // Soma o orçamento setado em todas as datas do mês para esta campanha
+                                                let campTotalPlanned = 0;
+                                                const monthDaily = camp?.dailyData?.[selectedMonth];
+                                                if (monthDaily && typeof monthDaily === 'object') {
+                                                    Object.values(monthDaily).forEach(d => {
+                                                        campTotalPlanned += Number(d?.planned) || 0;
+                                                    });
+                                                }
+                                                return (
+                                                    <tr key={camp.id} className="hover:bg-slate-50">
+                                                        <td className="px-4 py-3 font-semibold text-slate-900">{camp.name}</td>
+                                                        <td className="px-4 py-3">{camp.product}</td>
+                                                        <td className="px-4 py-3">
+                                                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${camp.tool === 'Google Ads' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
+                                                                {camp.tool}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                {camp.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center font-bold text-slate-800">
+                                                            {formatBRL(campTotalPlanned)}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <button 
+                                                                onClick={() => setCampaignPacingModal(camp)}
+                                                                className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                                                            >
+                                                                <Icon name="calendar" className="w-3.5 h-3.5" /> {isReadOnly ? 'Ver Diário' : 'Gerenciar Investimento Diário'}
+                                                            </button>
+                                                        </td>
+                                                        {!isReadOnly && (
+                                                            <td className="px-4 py-3 text-right">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const newCamps = (campaigns || []).filter(c => c && c.id !== camp.id);
+                                                                        saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, newCamps, campaignMap);
+                                                                    }}
+                                                                    className="text-red-500 hover:text-red-700 p-1 rounded"
+                                                                >
+                                                                    <Icon name="trash" className="w-4 h-4" />
+                                                                </button>
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })}
                                     </tbody>
                                 </table>
                             </div>
