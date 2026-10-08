@@ -939,7 +939,7 @@
                     aiMessage += `- CPQ Médio Projetado: ${formatBRL(runRateCpq > 0 ? runRateSpentFiltered / runRateCpq : 0)} (Meta: ${formatBRL(currentKPIs.targetCpqCost)})\n`;
                     aiMessage += `- CPA Médio Projetado: ${formatBRL(runRateMat > 0 ? runRateSpentFiltered / runRateMat : 0)} (Meta: ${formatBRL(currentKPIs.targetCpaCost)})\n\n`;
                     
-                    aiMessage += `Recomendação da IA: O pacing dinâmico mantém estabilidade operacional sem saltos diários bruscos.`;
+                    aiMessage += `Recomendação da IA: O pacing dinâmico mantém estabilidade sem saltos diários bruscos.`;
 
                     setAiText(aiMessage);
                 }, 1000);
