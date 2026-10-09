@@ -31,9 +31,7 @@
             appId: "1:116688559377:web:cb8b0a1e9450d23e9280b0",
             measurementId: "G-XPFMY99N"
         };
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        firebase.initializeApp(firebaseConfig);
         window.db = firebase.firestore();
     </script>
 
@@ -295,6 +293,58 @@
                 return map;
             }, [campaigns, selectedMonth, selectedTool]);
 
+            const overviewGlobalStats = useMemo(() => {
+                let totalBudget = 0;
+                let totalSpent = 0;
+                let googleSpent = 0;
+                let metaSpent = 0;
+                let totalCpq = 0;
+                let totalMatriculados = 0;
+                let totalCpqGoal = 0;
+                let totalMatriculadosGoal = 0;
+
+                const curBudgets = (budgetsByMonth && budgetsByMonth[selectedMonth]) || {};
+                const curGoals = (goalsByMonth && goalsByMonth[selectedMonth]) || {};
+                const curGrid = (monthlyGridData && monthlyGridData[selectedMonth]) || {};
+
+                PRODUCTS.forEach(p => {
+                    totalBudget += Number(curBudgets[p]) || 0;
+                    const g = curGoals[p] || {};
+                    totalCpqGoal += Number(g.cpq) || 0;
+                    totalMatriculadosGoal += Number(g.matriculados) || 0;
+
+                    const prodGrid = curGrid[p] || {};
+                    Object.values(prodGrid).forEach(d => {
+                        totalCpq += Number(d?.cpqVal) || 0;
+                        totalMatriculados += Number(d?.matriculadosVal) || 0;
+                    });
+                });
+
+                (campaigns || []).forEach(c => {
+                    if (c && (c.status || "Ativa") === "Ativa") {
+                        const monthDaily = c?.dailyData?.[selectedMonth];
+                        if (monthDaily && typeof monthDaily === 'object') {
+                            Object.values(monthDaily).forEach(d => {
+                                const val = Number(d?.realized) || 0;
+                                totalSpent += val;
+                                if (c.tool === "Google Ads") googleSpent += val;
+                                if (c.tool === "Meta Ads") metaSpent += val;
+                            });
+                        }
+                    }
+                });
+
+                const totalPct = totalBudget > 0 ? Math.min(Math.round((totalSpent / totalBudget) * 100), 100) : 0;
+                const googlePct = totalSpent > 0 ? Math.round((googleSpent / totalSpent) * 100) : 0;
+                const metaPct = totalSpent > 0 ? Math.round((metaSpent / totalSpent) * 100) : 0;
+                const cpqPct = totalCpqGoal > 0 ? Math.round((totalCpq / totalCpqGoal) * 100) : 0;
+                const matriculadosPct = totalMatriculadosGoal > 0 ? Math.round((totalMatriculados / totalMatriculadosGoal) * 100) : 0;
+                const avgCpqCost = totalCpq > 0 ? totalSpent / totalCpq : 0;
+                const avgCpaCost = totalMatriculados > 0 ? totalSpent / totalMatriculados : 0;
+
+                return { totalBudget, totalSpent, totalPct, googleSpent, metaSpent, googlePct, metaPct, totalCpq, totalMatriculados, totalCpqGoal, totalMatriculadosGoal, cpqPct, matriculadosPct, avgCpqCost, avgCpaCost };
+            }, [budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, selectedMonth]);
+
             const pacingRows = useMemo(() => {
                 const prodBudget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 const totalDaysCount = daysInMonth.length || 30;
@@ -408,6 +458,41 @@
                 });
             }, [pacingRows, pacingFilter]);
 
+            const todayDynamicPacing = useMemo(() => {
+                const now = new Date();
+                const todayStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const found = (pacingRows || []).find(r => r.dateStr === todayStr);
+                if (found) return found.pacingIdeal;
+                return (pacingRows && pacingRows[0]?.pacingIdeal) || 0;
+            }, [pacingRows]);
+
+            const campaignPacingSummary = useMemo(() => {
+                const activeCamps = (campaigns || []).filter(c => c && c.product === selectedProduct && (c.status || "Ativa") === "Ativa" && (selectedTool === 'Todas' || c.tool === selectedTool));
+                
+                let totalSetadoD1 = 0;
+                activeCamps.forEach(camp => {
+                    const monthDaily = camp?.dailyData?.[selectedMonth];
+                    if (monthDaily && typeof monthDaily === 'object') {
+                        const d1Entry = monthDaily[dMinus1DateStr];
+                        if (d1Entry && d1Entry.planned !== '') {
+                            totalSetadoD1 += Number(d1Entry.planned) || 0;
+                        }
+                    }
+                });
+
+                const currentDayPacing = todayDynamicPacing;
+                const diff = totalSetadoD1 - currentDayPacing;
+                const isOver = diff > 0;
+
+                return {
+                    totalSetadoD1,
+                    pacingIdealDaily: currentDayPacing,
+                    diff,
+                    isOver,
+                    activeCount: activeCamps.length
+                };
+            }, [campaigns, selectedProduct, selectedTool, selectedMonth, dMinus1DateStr, todayDynamicPacing]);
+
             const updateGridCell = (dayStr, field, val) => {
                 if (isReadOnly) return;
                 const updatedGrid = JSON.parse(JSON.stringify(monthlyGridData || {}));
@@ -456,7 +541,7 @@
 
             const resolveProductForCampaign = (campName) => {
                 const clean = (campName || "").trim();
-                if (campaignMap && campaignMap[clean]) {
+                if (campaignMap[clean]) {
                     return campaignMap[clean];
                 }
                 const upper = clean.toUpperCase();
@@ -747,7 +832,7 @@
                 const targetCpqCost = cpqGoal > 0 ? budget / cpqGoal : 0;
                 const targetCpaCost = matriculadosGoal > 0 ? budget / matriculadosGoal : 0;
 
-                const remainingBudget = budget - totalRealized; 
+                const balance = budget - globalRealized; 
                 const totalDaysCount = daysInMonth.length || 30;
                 const suggestedPacing = totalDaysCount > 0 ? budget / totalDaysCount : 0;
 
@@ -755,7 +840,7 @@
                     budget,
                     globalRealized,
                     totalRealized,
-                    remainingBudget,
+                    balance,
                     totalCpq,
                     totalMatriculados,
                     cpqGoal,
@@ -1046,7 +1131,7 @@
                                 <form onSubmit={(e) => {
                                     e.preventDefault();
                                     if (!newMapCampName.trim()) return;
-                                    const updatedMap = { ...(campaignMap || {}), [newMapCampName.trim()]: newMapProduct };
+                                    const updatedMap = { ...campaignMap, [newMapCampName.trim()]: newMapProduct };
                                     saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, updatedMap, recalcTriggers);
                                     setNewMapCampName("");
                                     alert("Nova campanha mapeada com sucesso!");
@@ -1088,7 +1173,7 @@
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200">
-                                        {!campaignMap || Object.entries(campaignMap).length === 0 ? (
+                                        {Object.entries(campaignMap).length === 0 ? (
                                             <tr>
                                                 <td colSpan="3" className="px-4 py-6 text-center text-slate-400 text-xs">Nenhum mapeamento personalizado cadastrado.</td>
                                             </tr>
@@ -1350,16 +1435,12 @@
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                     <span className="text-[11px] font-semibold text-slate-500 uppercase flex items-center flex-wrap gap-1">
                                         Consumo Realizado {selectedTool !== 'Todas' && <span className="text-blue-600">({selectedTool})</span>}
                                     </span>
                                     <p className="text-lg font-bold text-blue-700 mt-1">{formatBRL(currentKPIs.totalRealized)}</p>
-                                </div>
-                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">Orçamento Restante</span>
-                                    <p className={`text-lg font-bold mt-1 ${currentKPIs.remainingBudget < 0 ? 'text-red-600' : 'text-emerald-700'}`}>{formatBRL(currentKPIs.remainingBudget)}</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                     <span className="text-[11px] font-semibold text-slate-500 uppercase">CPQ (Real / Meta)</span>
