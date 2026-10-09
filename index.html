@@ -31,7 +31,9 @@
             appId: "1:116688559377:web:cb8b0a1e9450d23e9280b0",
             measurementId: "G-XPFMY99N"
         };
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         window.db = firebase.firestore();
     </script>
 
@@ -454,7 +456,7 @@
 
             const resolveProductForCampaign = (campName) => {
                 const clean = (campName || "").trim();
-                if (campaignMap[clean]) {
+                if (campaignMap && campaignMap[clean]) {
                     return campaignMap[clean];
                 }
                 const upper = clean.toUpperCase();
@@ -1044,7 +1046,7 @@
                                 <form onSubmit={(e) => {
                                     e.preventDefault();
                                     if (!newMapCampName.trim()) return;
-                                    const updatedMap = { ...campaignMap, [newMapCampName.trim()]: newMapProduct };
+                                    const updatedMap = { ...(campaignMap || {}), [newMapCampName.trim()]: newMapProduct };
                                     saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, campaigns, updatedMap, recalcTriggers);
                                     setNewMapCampName("");
                                     alert("Nova campanha mapeada com sucesso!");
@@ -1086,7 +1088,7 @@
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200">
-                                        {Object.entries(campaignMap).length === 0 ? (
+                                        {!campaignMap || Object.entries(campaignMap).length === 0 ? (
                                             <tr>
                                                 <td colSpan="3" className="px-4 py-6 text-center text-slate-400 text-xs">Nenhum mapeamento personalizado cadastrado.</td>
                                             </tr>
