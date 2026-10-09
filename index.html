@@ -1435,12 +1435,16 @@
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                     <span className="text-[11px] font-semibold text-slate-500 uppercase flex items-center flex-wrap gap-1">
                                         Consumo Realizado {selectedTool !== 'Todas' && <span className="text-blue-600">({selectedTool})</span>}
                                     </span>
                                     <p className="text-lg font-bold text-blue-700 mt-1">{formatBRL(currentKPIs.totalRealized)}</p>
+                                </div>
+                                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase">Saldo Restante de Orçamento</span>
+                                    <p className={`text-lg font-bold mt-1 ${currentKPIs.balance >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatBRL(currentKPIs.balance)}</p>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                                     <span className="text-[11px] font-semibold text-slate-500 uppercase">CPQ (Real / Meta)</span>
