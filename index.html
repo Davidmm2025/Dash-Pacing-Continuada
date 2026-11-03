@@ -8,8 +8,8 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Supabase CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
@@ -22,11 +22,17 @@
     <div id="root"></div>
 
     <script>
-        // Configuração Corrigida com a URL oficial do Supabase
-        const SUPABASE_URL = 'https://gtzdguvlemfvawstqvxv.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_h04lapisPDmH4t_yngfhzA_A-NGDTRp';
-        
-        window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const firebaseConfig = {
+            apiKey: "AIzaSyDb1jyTxZCVsRltoV8cgNCH7oU24ypQx2U",
+            authDomain: "dashboard-pacing.firebaseapp.com",
+            projectId: "dashboard-pacing",
+            storageBucket: "dashboard-pacing.firebasestorage.app",
+            messagingSenderId: "116688559377",
+            appId: "1:116688559377:web:cb8b0a1e9450d23e9280b0",
+            measurementId: "G-XPFMY99N"
+        };
+        firebase.initializeApp(firebaseConfig);
+        window.db = firebase.firestore();
     </script>
 
     <script type="text/babel">
@@ -80,7 +86,7 @@
         function App() {
             const [currentUser, setCurrentUser] = useState(() => {
                 try {
-                    const saved = sessionStorage.getItem("unicesumar_auth_user");
+                    const saved = localStorage.getItem("unicesumar_auth_user");
                     return saved ? JSON.parse(saved) : null;
                 } catch(e) {
                     return null;
@@ -147,14 +153,14 @@
 
                 setCurrentUser(authObj);
                 try {
-                    sessionStorage.setItem("unicesumar_auth_user", JSON.stringify(authObj));
+                    localStorage.setItem("unicesumar_auth_user", JSON.stringify(authObj));
                 } catch(e) {}
             };
 
             const handleLogout = () => {
                 setCurrentUser(null);
                 try {
-                    sessionStorage.removeItem("unicesumar_auth_user");
+                    localStorage.removeItem("unicesumar_auth_user");
                 } catch(e) {}
             };
 
@@ -193,52 +199,40 @@
             }, []);
 
             useEffect(() => {
-                if (!window.supabaseClient) return;
-
-                const fetchData = async () => {
-                    setSyncStatus("A carregar nuvem...");
-                    try {
-                        const { data, error } = await window.supabaseClient
-                            .from('dash_state')
-                            .select('*')
-                            .eq('id', 'main_state_multi_month_v3')
-                            .maybeSingle();
-
-                        if (error) {
-                            console.error("Erro ao carregar dados do Supabase:", error);
-                            setSyncStatus("Modo local (Erro Supabase)");
-                            return;
+                if (!window.db) return;
+                const docRef = window.db.collection("dash_data").doc("main_state_multi_month_v3");
+                
+                const unsubscribe = docRef.onSnapshot((docSnap) => {
+                    if (docSnap && docSnap.exists) {
+                        const data = docSnap.data() || {};
+                        if (data.budgetsByMonth) setBudgetsByMonth(data.budgetsByMonth);
+                        if (data.goalsByMonth) setGoalsByMonth(data.goalsByMonth);
+                        if (data.monthlyGridData) setMonthlyGridData(data.monthlyGridData);
+                        if (data.recalcTriggers) recalcTriggersSet(data.recalcTriggers);
+                        
+                        if (Array.isArray(data.campaigns)) {
+                            const validCampaigns = data.campaigns.filter(c => {
+                                if (!c || !c.name) return false;
+                                const n = c.name.toLowerCase();
+                                return !n.includes('total') && !n.includes('resultados') && !n.includes('results');
+                            });
+                            setCampaigns(validCampaigns);
                         }
 
-                        if (data && data.content) {
-                            const stateData = data.content;
-                            if (stateData.budgetsByMonth) setBudgetsByMonth(stateData.budgetsByMonth);
-                            if (stateData.goalsByMonth) setGoalsByMonth(stateData.goalsByMonth);
-                            if (stateData.monthlyGridData) setMonthlyGridData(stateData.monthlyGridData);
-                            if (stateData.recalcTriggers) recalcTriggersSet(stateData.recalcTriggers);
-                            
-                            if (Array.isArray(stateData.campaigns)) {
-                                const validCampaigns = stateData.campaigns.filter(c => {
-                                    if (!c || !c.name) return false;
-                                    const n = c.name.toLowerCase();
-                                    return !n.includes('total') && !n.includes('resultados') && !n.includes('results');
-                                });
-                                setCampaigns(validCampaigns);
-                            }
-
-                            if (stateData.campaignMap) setCampaignMap(stateData.campaignMap);
-                        }
-                        setSyncStatus("Sincronizado com o Supabase");
-                    } catch (err) {
-                        console.error("Erro inesperado:", err);
-                        setSyncStatus("Modo local (Offline)");
+                        if (data.campaignMap) setCampaignMap(data.campaignMap);
+                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
+                    } else {
+                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
                     }
-                };
+                }, (error) => {
+                    console.error("Erro ao sincronizar:", error);
+                    setSyncStatus("Modo local (Offline - Protegido)");
+                });
 
-                fetchData();
+                return () => unsubscribe();
             }, []);
 
-            const saveDataToCloud = async (newBudgets, newGoals, newGrid, newCampaigns, newMap, newTriggers) => {
+            const saveDataToCloud = (newBudgets, newGoals, newGrid, newCampaigns, newMap, newTriggers) => {
                 if (isReadOnly) return;
                 const b = newBudgets || budgetsByMonth;
                 const g = newGoals || goalsByMonth;
@@ -254,32 +248,20 @@
                 setCampaignMap(m);
                 recalcTriggersSet(tr);
 
-                if (window.supabaseClient) {
+                if (window.db) {
                     setSyncStatus("A guardar...");
-                    try {
-                        const payload = {
-                            budgetsByMonth: b,
-                            goalsByMonth: g,
-                            monthlyGridData: gr,
-                            campaigns: c,
-                            campaignMap: m,
-                            recalcTriggers: tr
-                        };
-
-                        const { error } = await window.supabaseClient
-                            .from('dash_state')
-                            .upsert([{ id: 'main_state_multi_month_v3', content: payload }], { onConflict: 'id' });
-
-                        if (error) {
-                            console.error("Erro ao guardar no Supabase:", error);
-                            setSyncStatus("Erro ao guardar");
-                        } else {
-                            setSyncStatus("Sincronizado com o Supabase");
-                        }
-                    } catch (err) {
-                        console.error("Erro ao guardar:", err);
+                    window.db.collection("dash_data").doc("main_state_multi_month_v3").set({
+                        budgetsByMonth: b,
+                        goalsByMonth: g,
+                        monthlyGridData: gr,
+                        campaigns: c,
+                        campaignMap: m,
+                        recalcTriggers: tr
+                    }, { merge: true }).then(() => {
+                        setSyncStatus("Sincronizado com a nuvem (Protegido)");
+                    }).catch(() => {
                         setSyncStatus("Erro ao guardar");
-                    }
+                    });
                 }
             };
 
@@ -1013,13 +995,10 @@
                 <div className="max-w-[98rem] mx-auto px-4 py-6">
                     <div className="bg-unicesumar text-white rounded-2xl p-5 shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
                                 <h1 className="text-xl font-bold tracking-wide">UniCesumar</h1>
                                 <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${isReadOnly ? 'bg-amber-500/20 text-amber-300 border border-amber-400/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'}`}>
                                     {currentUser.name} ({isReadOnly ? 'Somente Leitura' : 'Editor'})
-                                </span>
-                                <span className="text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/30">
-                                    ☁️ {syncStatus}
                                 </span>
                             </div>
                             <p className="text-xs text-blue-200">Gestão de Mídia Performance & Pacing</p>
@@ -1586,7 +1565,7 @@
                                 <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
                                     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Planejamento Diário Base</span>
                                     <p className="text-2xl font-bold text-purple-700 mt-1">{formatBRL(campaignPacingSummary.pacingIdealDaily)}</p>
-                                    <p className="text-xs text-slate-500 mt-0.5">Meta diária para o dia de hoje (recalculated if applicable)</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">Meta diária para o dia de hoje (recalculada se aplicável)</p>
                                 </div>
                                 <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
                                     <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status vs Planejado</span>
