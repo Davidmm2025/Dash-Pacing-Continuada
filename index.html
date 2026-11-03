@@ -192,97 +192,97 @@
             }, []);
 
             useEffect(() => {
-                if (!window.supabaseClient) return;
+            if (!window.supabaseClient) return;
 
-                const fetchData = async () => {
-                    setSyncStatus("A carregar nuvem...");
-                    try {
-                        const { data, error } = await window.supabaseClient
-                            .from('dash_state')
-                            .select('*')
-                            .eq('id', 'main_state_multi_month_v3')
-                            .single();
+            const fetchData = async () => {
+                setSyncStatus("A carregar nuvem...");
+                try {
+                    const { data, error } = await window.supabaseClient
+                        .from('dash_state')
+                        .select('*')
+                        .eq('id', 'main_state_multi_month_v3')
+                        .single();
 
-                        if (error && error.code !== 'PGRST116') {
-                            console.error("Erro ao carregar dados do Supabase:", error);
-                            setSyncStatus("Modo local (Erro Supabase)");
-                            return;
-                        }
-
-                        if (data && data.content) {
-                            const stateData = data.content;
-                            if (stateData.budgetsByMonth) setBudgetsByMonth(stateData.budgetsByMonth);
-                            if (stateData.goalsByMonth) setGoalsByMonth(stateData.goalsByMonth);
-                            if (stateData.monthlyGridData) setMonthlyGridData(stateData.monthlyGridData);
-                            if (stateData.recalcTriggers) recalcTriggersSet(stateData.recalcTriggers);
-                            
-                            if (Array.isArray(stateData.campaigns)) {
-                                const validCampaigns = stateData.campaigns.filter(c => {
-                                    if (!c || !c.name) return false;
-                                    const n = c.name.toLowerCase();
-                                    return !n.includes('total') && !n.includes('resultados') && !n.includes('results');
-                                });
-                                setCampaigns(validCampaigns);
-                            }
-
-                            if (stateData.campaignMap) setCampaignMap(stateData.campaignMap);
-                        }
-                        setSyncStatus("Sincronizado com o Supabase");
-                    } catch (err) {
-                        console.error("Erro inesperado:", err);
-                        setSyncStatus("Modo local (Offline)");
+                    if (error && error.code !== 'PGRST116') {
+                        console.error("Erro ao carregar dados do Supabase:", error);
+                        setSyncStatus("Modo local (Erro Supabase)");
+                        return;
                     }
-                };
 
-                fetchData();
-            }, []);
-
-            const saveDataToCloud = async (newBudgets, newGoals, newGrid, newCampaigns, newMap, newTriggers) => {
-                if (isReadOnly) return;
-                const b = newBudgets || budgetsByMonth;
-                const g = newGoals || goalsByMonth;
-                const gr = newGrid || monthlyGridData;
-                const c = newCampaigns || campaigns;
-                const m = newMap || campaignMap;
-                const tr = newTriggers || recalcTriggers;
-
-                setBudgetsByMonth(b);
-                setGoalsByMonth(g);
-                setMonthlyGridData(gr);
-                setCampaigns(c);
-                setCampaignMap(m);
-                recalcTriggersSet(tr);
-
-                if (window.supabaseClient) {
-                    setSyncStatus("A guardar...");
-                    try {
-                        const payload = {
-                            budgetsByMonth: b,
-                            goalsByMonth: g,
-                            monthlyGridData: gr,
-                            campaigns: c,
-                            campaignMap: m,
-                            recalcTriggers: tr
-                        };
-
-                        const { error } = await window.supabaseClient
-                            .from('dash_state')
-                            .upsert({ id: 'main_state_multi_month_v3', content: payload });
-
-                        if (error) {
-                            console.error("Erro ao guardar no Supabase:", error);
-                            setSyncStatus("Erro ao guardar");
-                        } else {
-                            setSyncStatus("Sincronizado com o Supabase");
+                    if (data && data.content) {
+                        const stateData = data.content;
+                        if (stateData.budgetsByMonth) setBudgetsByMonth(stateData.budgetsByMonth);
+                        if (stateData.goalsByMonth) setGoalsByMonth(stateData.goalsByMonth);
+                        if (stateData.monthlyGridData) setMonthlyGridData(stateData.monthlyGridData);
+                        if (stateData.recalcTriggers) recalcTriggersSet(stateData.recalcTriggers);
+                        
+                        if (Array.isArray(stateData.campaigns)) {
+                            const validCampaigns = stateData.campaigns.filter(c => {
+                                if (!c || !c.name) return false;
+                                const n = c.name.toLowerCase();
+                                return !n.includes('total') && !n.includes('resultados') && !n.includes('results');
+                            });
+                            setCampaigns(validCampaigns);
                         }
-                    } catch (err) {
-                        console.error("Erro ao guardar:", err);
-                        setSyncStatus("Erro ao guardar");
+
+                        if (stateData.campaignMap) setCampaignMap(stateData.campaignMap);
                     }
+                    setSyncStatus("Sincronizado com o Supabase");
+                } catch (err) {
+                    console.error("Erro inesperado:", err);
+                    setSyncStatus("Modo local (Offline)");
                 }
             };
 
-            const formatBRL = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+            fetchData();
+        }, []);
+
+        const saveDataToCloud = async (newBudgets, newGoals, newGrid, newCampaigns, newMap, newTriggers) => {
+            if (isReadOnly) return;
+            const b = newBudgets || budgetsByMonth;
+            const g = newGoals || goalsByMonth;
+            const gr = newGrid || monthlyGridData;
+            const c = newCampaigns || campaigns;
+            const m = newMap || campaignMap;
+            const tr = newTriggers || recalcTriggers;
+
+            setBudgetsByMonth(b);
+            setGoalsByMonth(g);
+            setMonthlyGridData(gr);
+            setCampaigns(c);
+            setCampaignMap(m);
+            recalcTriggersSet(tr);
+
+            if (window.supabaseClient) {
+                setSyncStatus("A guardar...");
+                try {
+                    const payload = {
+                        budgetsByMonth: b,
+                        goalsByMonth: g,
+                        monthlyGridData: gr,
+                        campaigns: c,
+                        campaignMap: m,
+                        recalcTriggers: tr
+                    };
+
+                    const { error } = await window.supabaseClient
+                        .from('dash_state')
+                        .upsert({ id: 'main_state_multi_month_v3', content: payload }, { onConflict: 'id' });
+
+                    if (error) {
+                        console.error("Erro detalhado ao guardar no Supabase:", error.message || error);
+                        setSyncStatus("Erro ao guardar");
+                    } else {
+                        setSyncStatus("Sincronizado com o Supabase");
+                    }
+                } catch (err) {
+                    console.error("Erro inesperado ao guardar:", err);
+                    setSyncStatus("Erro ao guardar");
+                }
+            }
+        };
+
+        const formatBRL = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
             const formatNum = (val) => new Intl.NumberFormat('pt-BR').format(Math.round(val || 0));
 
             const currentMonthBudgets = useMemo(() => {
