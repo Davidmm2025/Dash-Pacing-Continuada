@@ -265,9 +265,12 @@
                         recalcTriggers: tr
                     };
 
+                    // Using proper upsert format for Supabase v2
                     const { error } = await window.supabaseClient
                         .from('dash_state')
-                        .upsert({ id: 'main_state_multi_month_v3', content: payload }, { onConflict: 'id' });
+                        .upsert([
+                            { id: 'main_state_multi_month_v3', content: payload }
+                        ], { onConflict: 'id' });
 
                     if (error) {
                         console.error("Erro detalhado ao guardar no Supabase:", error.message || error);
