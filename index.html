@@ -220,7 +220,7 @@
                                 const validCampaigns = stateData.campaigns.filter(c => {
                                     if (!c || !c.name) return false;
                                     const n = c.name.toLowerCase();
-                                    return !n.includes('total') && !n.includes('resultados') && !n.includes('results') && !n.includes('vex');
+                                    return !n.includes('total') && !n.includes('resultados') && !n.includes('results') && !n.includes('vex') && c.product !== 'Profissionalizantes';
                                 });
                                 setCampaigns(validCampaigns);
                             }
@@ -297,14 +297,16 @@
                 const map = {};
                 PRODUCTS.forEach(prod => {
                     let total = 0;
-                    (campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product === prod && (c.status || "Ativa") === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool)).forEach(c => {
-                        const monthDaily = c?.dailyData?.[selectedMonth];
-                        if (monthDaily && typeof monthDaily === 'object') {
-                            Object.values(monthDaily).forEach(d => {
-                                total += Number(d?.realized) || 0;
-                            });
-                        }
-                    });
+                    if (prod !== "Profissionalizantes") {
+                        (campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product === prod && (c.status || "Ativa") === "Ativa" && (selectedTool === "Todas" || c.tool === selectedTool)).forEach(c => {
+                            const monthDaily = c?.dailyData?.[selectedMonth];
+                            if (monthDaily && typeof monthDaily === 'object') {
+                                Object.values(monthDaily).forEach(d => {
+                                    total += Number(d?.realized) || 0;
+                                });
+                            }
+                        });
+                    }
                     map[prod] = total;
                 });
                 return map;
@@ -338,7 +340,7 @@
                 });
 
                 (campaigns || []).forEach(c => {
-                    if (c && c.name && !c.name.toLowerCase().includes('vex') && (c.status || "Ativa") === "Ativa") {
+                    if (c && c.name && !c.name.toLowerCase().includes('vex') && c.product !== "Profissionalizantes" && (c.status || "Ativa") === "Ativa") {
                         const monthDaily = c?.dailyData?.[selectedMonth];
                         if (monthDaily && typeof monthDaily === 'object') {
                             Object.values(monthDaily).forEach(d => {
@@ -367,7 +369,9 @@
                 const totalDaysCount = daysInMonth.length || 30;
                 const defaultPlanned = totalDaysCount > 0 ? prodBudget / totalDaysCount : 0;
 
-                const targetCampaigns = (campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product === selectedProduct && (c.status || "Ativa") === "Ativa");
+                const targetCampaigns = selectedProduct === "Profissionalizantes" 
+                    ? [] 
+                    : (campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product === selectedProduct && (c.status || "Ativa") === "Ativa");
 
                 const triggerKey = `${selectedMonth}_${selectedProduct}`;
                 const recalcTuesdayIndex = recalcTriggers[triggerKey] ?? -1;
@@ -484,7 +488,7 @@
             }, [pacingRows]);
 
             const campaignPacingSummary = useMemo(() => {
-                const activeCamps = (campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product === selectedProduct && (c.status || "Ativa") === "Ativa" && (selectedTool === 'Todas' || c.tool === selectedTool));
+                const activeCamps = (campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product !== "Profissionalizantes" && c.product === selectedProduct && (c.status || "Ativa") === "Ativa" && (selectedTool === 'Todas' || c.tool === selectedTool));
                 
                 let totalSetadoD1 = 0;
                 activeCamps.forEach(camp => {
@@ -619,7 +623,8 @@
                             if (!campName) continue;
                             const lowerName = campName.toLowerCase();
                             
-                            if (lowerName.includes('total') || lowerName.includes('resultados') || lowerName.includes('results') || lowerName.includes('campanha') || lowerName.includes('nome da') || lowerName.includes('vex')) {
+                            const targetProduct = resolveProductForCampaign(campName);
+                            if (lowerName.includes('total') || lowerName.includes('resultados') || lowerName.includes('results') || lowerName.includes('campanha') || lowerName.includes('nome da') || lowerName.includes('vex') || targetProduct === 'Profissionalizantes') {
                                 continue;
                             }
 
@@ -666,7 +671,6 @@
                             if (isNaN(cost)) cost = 0;
 
                             let toolType = campName.toUpperCase().includes('FB') ? 'Meta Ads' : 'Google Ads';
-                            const targetProduct = resolveProductForCampaign(campName);
 
                             if (!fileAggregates[campName]) {
                                 fileAggregates[campName] = { product: targetProduct, tool: toolType, months: {} };
@@ -721,7 +725,7 @@
                         updatedCampaigns = updatedCampaigns.filter(c => {
                             if (!c || !c.name) return false;
                             const n = c.name.toLowerCase();
-                            return !n.includes('total') && !n.includes('resultados') && !n.includes('results') && !n.includes('vex');
+                            return !n.includes('total') && !n.includes('resultados') && !n.includes('results') && !n.includes('vex') && c.product !== 'Profissionalizantes';
                         });
 
                         saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap, recalcTriggers);
@@ -824,14 +828,16 @@
                 const budget = Number(currentMonthBudgets[selectedProduct]) || 0;
                 
                 let globalRealized = 0;
-                (campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product === selectedProduct && (c.status || "Ativa") === "Ativa").forEach(c => {
-                    const monthDaily = c?.dailyData?.[selectedMonth];
-                    if (monthDaily && typeof monthDaily === 'object') {
-                        Object.values(monthDaily).forEach(d => {
-                            globalRealized += Number(d?.realized) || 0;
-                        });
-                    }
-                });
+                if (selectedProduct !== "Profissionalizantes") {
+                    (campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product === selectedProduct && (c.status || "Ativa") === "Ativa").forEach(c => {
+                        const monthDaily = c?.dailyData?.[selectedMonth];
+                        if (monthDaily && typeof monthDaily === 'object') {
+                            Object.values(monthDaily).forEach(d => {
+                                globalRealized += Number(d?.realized) || 0;
+                            });
+                        }
+                    });
+                }
 
                 const totalRealized = (pacingRows || []).reduce((acc, r) => acc + (r.realized || 0), 0);
                 const totalCpq = (pacingRows || []).reduce((acc, r) => acc + (r.cpqVal || 0), 0);
@@ -898,7 +904,7 @@
                 });
 
                 (campaigns || []).forEach(c => {
-                    if (c && c.name && c.name.toLowerCase().includes('vex')) return;
+                    if (c && c.name && (c.name.toLowerCase().includes('vex') || c.product === "Profissionalizantes")) return;
                     const monthDaily = c?.dailyData?.[monthKey];
                     if (monthDaily && typeof monthDaily === 'object') {
                         Object.values(monthDaily).forEach(d => {
@@ -1613,13 +1619,13 @@
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200">
-                                        {(campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product === selectedProduct && (selectedTool === 'Todas' || c.tool === selectedTool)).length === 0 ? (
+                                        {(campaigns || []).filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product !== "Profissionalizantes" && c.product === selectedProduct && (selectedTool === 'Todas' || c.tool === selectedTool)).length === 0 ? (
                                             <tr>
                                                 <td colSpan="7" className="px-4 py-8 text-center text-slate-400 text-xs">Nenhuma campanha encontrada para este produto/canal. Suba um CSV ou adicione mapeamentos.</td>
                                             </tr>
                                         ) : (
                                             (campaigns || [])
-                                                .filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product === selectedProduct && (selectedTool === 'Todas' || c.tool === selectedTool))
+                                                .filter(c => c && c.name && !c.name.toLowerCase().includes('vex') && c.product !== "Profissionalizantes" && c.product === selectedProduct && (selectedTool === 'Todas' || c.tool === selectedTool))
                                                 .map(camp => {
                                                     let campPlannedD1 = 0;
                                                     const monthDaily = camp?.dailyData?.[selectedMonth];
