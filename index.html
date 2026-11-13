@@ -593,27 +593,46 @@
                         const lines = content.split(/\r?\n/);
                         if (lines.length < 2) return;
 
-                        const firstLine = lines[0];
-                        const sep = firstLine.includes(';') ? ';' : ',';
-                        const headers = parseCSVLine(firstLine, sep).map(h => h.toLowerCase().trim());
+                        let headerRowIndex = 0;
+                        for (let idx = 0; idx < Math.min(lines.length, 10); idx++) {
+                            const lineNorm = cleanString(lines[idx]);
+                            if ((lineNorm.includes('campanha') || lineNorm.includes('campaign')) &&
+                                (lineNorm.includes('dia') || lineNorm.includes('data') || lineNorm.includes('date') || lineNorm.includes('custo') || lineNorm.includes('cost') || lineNorm.includes('valor') || lineNorm.includes('orcamento') || lineNorm.includes('budget'))) {
+                                headerRowIndex = idx;
+                                break;
+                            }
+                        }
 
-                        let nameCol = 0;
+                        const headerLine = lines[headerRowIndex];
+                        const sep = headerLine.includes(';') ? ';' : ',';
+                        const headers = parseCSVLine(headerLine, sep).map(h => h.toLowerCase().trim());
+
+                        let nameCol = -1;
                         let dateCol = -1;
                         let costCol = -1;
+                        let budgetCol = -1;
 
                         headers.forEach((h, idx) => {
-                            if (h.includes('campanha') || h.includes('campaign') || h.includes('nome')) nameCol = idx;
-                            if (h.includes('data') || h.includes('date') || h.includes('dia') || h.includes('day') || h.includes('reporting starts')) {
+                            const hNorm = cleanString(h);
+                            if ((hNorm.includes('campanha') || hNorm.includes('campaign') || hNorm.includes('nome')) && !hNorm.includes('orcamento') && !hNorm.includes('tipo') && !hNorm.includes('budget')) {
+                                if (nameCol === -1) nameCol = idx;
+                            }
+                            if (hNorm.includes('data') || hNorm.includes('date') || hNorm === 'dia' || hNorm === 'day' || hNorm.includes('reporting starts')) {
                                 if (dateCol === -1) dateCol = idx;
                             }
-                            if (h.includes('valor') || h.includes('custo') || h.includes('cost') || h.includes('spent') || h.includes('gasto') || h.includes('amount') || h.includes('imposto')) {
+                            if ((hNorm.includes('valor gasto') || hNorm.includes('custo') || hNorm.includes('cost') || hNorm.includes('spent') || hNorm.includes('gasto') || hNorm.includes('amount')) && !hNorm.includes('orcamento') && !hNorm.includes('budget')) {
                                 if (costCol === -1) costCol = idx;
+                            }
+                            if ((hNorm.includes('orcamento') || h.includes('orã§amento') || hNorm.includes('budget')) && !hNorm.includes('tipo') && !hNorm.includes('type')) {
+                                if (budgetCol === -1) budgetCol = idx;
                             }
                         });
 
+                        if (nameCol === -1) nameCol = 0;
+
                         const fileAggregates = {};
 
-                        for (let i = 1; i < lines.length; i++) {
+                        for (let i = headerRowIndex + 1; i < lines.length; i++) {
                             const line = lines[i];
                             if (!line.trim()) continue;
                             
@@ -653,14 +672,16 @@
                                 continue;
                             }
 
+                            const isoDateSort = `${year}-${month}-${day}`;
                             const monthKey = `${year}-${month}`;
                             const dateKey = `${day}/${month}`; 
 
                             let cost = 0;
-                            if (costCol !== -1 && cols[costCol]) {
+                            if (costCol !== -1 && cols[costCol] !== undefined) {
                                 cost = parseCost(cols[costCol]);
                             } else {
                                 for (let j = cols.length - 1; j >= 1; j--) {
+                                    if (j === budgetCol) continue;
                                     const parsed = parseCost(cols[j]);
                                     if (!isNaN(parsed) && parsed > 0) {
                                         cost = parsed;
@@ -670,21 +691,46 @@
                             }
                             if (isNaN(cost)) cost = 0;
 
+                            let hasBudget = false;
+                            let budgetVal = 0;
+                            if (budgetCol !== -1 && cols[budgetCol] !== undefined && /\d/.test(cols[budgetCol])) {
+                                const parsedB = parseCost(cols[budgetCol]);
+                                if (!isNaN(parsedB)) {
+                                    hasBudget = true;
+                                    budgetVal = parsedB;
+                                }
+                            }
+
                             let toolType = campName.toUpperCase().includes('FB') ? 'Meta Ads' : 'Google Ads';
 
                             if (!fileAggregates[campName]) {
-                                fileAggregates[campName] = { product: targetProduct, tool: toolType, months: {} };
+                                fileAggregates[campName] = { product: targetProduct, tool: toolType, months: {}, latestBudgets: {} };
                             }
                             if (!fileAggregates[campName].months[monthKey]) {
                                 fileAggregates[campName].months[monthKey] = {};
                             }
                             fileAggregates[campName].months[monthKey][dateKey] = (fileAggregates[campName].months[monthKey][dateKey] || 0) + cost;
+
+                            if (hasBudget) {
+                                const prevLatest = fileAggregates[campName].latestBudgets[monthKey];
+                                if (!prevLatest || isoDateSort >= prevLatest.isoDate) {
+                                    fileAggregates[campName].latestBudgets[monthKey] = {
+                                        isoDate: isoDateSort,
+                                        value: budgetVal
+                                    };
+                                }
+                            }
                         }
 
                         let importedTotal = 0;
+                        const now = new Date();
+                        const todayYear = now.getFullYear();
+                        const todayMonth = now.getMonth() + 1;
+                        const todayDay = now.getDate();
+                        const currentMonthStr = `${todayYear}-${String(todayMonth).padStart(2, '0')}`;
 
                         Object.entries(fileAggregates).forEach(([campName, campData]) => {
-                            const { product, tool, months } = campData;
+                            const { product, tool, months, latestBudgets } = campData;
 
                             let camp = updatedCampaigns.find(c => c && cleanString(c.name) === cleanString(campName));
                             
@@ -716,6 +762,30 @@
                                     importedTotal++;
                                 });
 
+                                if (latestBudgets[monthKey] !== undefined) {
+                                    const [mYearStr, mMonthStr] = monthKey.split('-');
+                                    const mYear = Number(mYearStr);
+                                    const mMonth = Number(mMonthStr);
+                                    const totalDaysInTargetMonth = new Date(mYear, mMonth, 0).getDate();
+
+                                    let startDay = totalDaysInTargetMonth + 1;
+                                    if (monthKey === currentMonthStr) {
+                                        startDay = todayDay;
+                                    } else if (monthKey > currentMonthStr) {
+                                        startDay = 1;
+                                    }
+
+                                    const newPlannedVal = latestBudgets[monthKey].value;
+                                    for (let d = startDay; d <= totalDaysInTargetMonth; d++) {
+                                        const dKey = `${String(d).padStart(2, '0')}/${mMonthStr}`;
+                                        const existingDay = monthDaily[dKey] || { planned: '', realized: '' };
+                                        monthDaily[dKey] = {
+                                            ...existingDay,
+                                            planned: newPlannedVal
+                                        };
+                                    }
+                                }
+
                                 campDaily[monthKey] = monthDaily;
                             });
 
@@ -729,7 +799,7 @@
                         });
 
                         saveDataToCloud(budgetsByMonth, goalsByMonth, monthlyGridData, updatedCampaigns, campaignMap, recalcTriggers);
-                        alert(`Sucesso! Ficheiro processado e sincronizado. ${importedTotal} dias foram atualizados de forma exata e segura.`);
+                        alert(`Sucesso! Ficheiro processado e sincronizado. ${importedTotal} dias de consumo atualizados e orçamentos planejados preenchidos a partir de hoje até o fim do mês.`);
                         e.target.value = '';
                     };
                     reader.readAsText(file, 'UTF-8');
